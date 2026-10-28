@@ -1,0 +1,175 @@
+rules_version = '2';
+
+// =========================================================
+// 무역의 발견 — Firestore 보안 규칙
+// Firebase 콘솔 → Firestore Database → 규칙 탭에 이 파일 내용을 그대로 붙여 넣고 [게시]하세요.
+//
+// 원칙
+//  - 교사: 구글 계정으로 로그인해 방을 만든 사람(ownerUid)만 단계 변경·잠금·취소·초기화 가능
+//  - 학생: 익명 로그인. 처음 고른 나라(seat) 하나만 조작 가능
+//  - 생산·거래는 서버에서 규칙대로인지 다시 검사 (생산량, 남은 기회, 재고, 수업 단계, 잠금)
+//  - 입장 코드는 방을 찾는 데만 쓰이고, 권한을 주지 않음
+// =========================================================
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function rp(code) { return /databases/$(database)/documents/rooms/$(code); }
+    function cp(code, cid) { return /databases/$(database)/documents/rooms/$(code)/countries/$(cid); }
+    function tp(code, tid) { return /databases/$(database)/documents/rooms/$(code)/trades/$(tid); }
+    function sp(code, cid) { return /databases/$(database)/documents/rooms/$(code)/seats/$(cid); }
+    function mp(code, uid) { return /databases/$(database)/documents/rooms/$(code)/members/$(uid); }
+    function room(code) { return get(rp(code)).data; }
+    function isTeacher(code) { return signedIn() && room(code).ownerUid == request.auth.uid; }
+    function holds(code, cid) { return signedIn() && exists(sp(code, cid)) && get(sp(code, cid)).data.uid == request.auth.uid; }
+    function roundOf(r) { return r.stage <= 3 ? 1 : 2; }
+    function canProduce(r) { return r.locks.production == false && (r.stage == 2 || r.stage == 5 || r.stage == 6); }
+    function canTrade(r) { return r.stage == 6 && r.locks.trade == false; }
+    function isQty(x) { return x is int && x > 0 && x <= 100000; }
+
+    // ---------- 생산 ----------
+    function produceOk(code, cid, item) {
+      let r = room(code);
+      let o = resource.data;
+      let n = request.resource.data;
+      let amt = r.outputs[cid][item];
+      let k = o.log.size();
+      return canProduce(r)
+        && o.chances > 0 && n.chances == o.chances - 1
+        && n.inv.diff(o.inv).affectedKeys().hasOnly([item])
+        && n.inv[item] == o.inv[item] + amt
+        && n.log.size() == k + 1
+        && n.log[0:k] == o.log
+        && n.log[k].item == item && n.log[k].amount == amt && n.log[k].round == roundOf(r)
+        && n.diff(o).affectedKeys().hasOnly(['inv', 'chances', 'log', 'op']);
+    }
+    function undoOk(code, cid) {
+      let r = room(code);
+      let o = resource.data;
+      let n = request.resource.data;
+      let k = o.log.size() - 1;
+      let last = o.log[k];
+      return r.allowUndo == true && canProduce(r)
+        && last.round == roundOf(r)
+        && n.log == o.log[0:k]
+        && n.chances == o.chances + 1
+        && n.inv.diff(o.inv).affectedKeys().hasOnly([last.item])
+        && n.inv[last.item] == o.inv[last.item] - last.amount
+        && n.inv[last.item] >= 0
+        && n.diff(o).affectedKeys().hasOnly(['inv', 'chances', 'log', 'op']);
+    }
+    function validProduce(code, cid) {
+      return holds(code, cid) && request.resource.data.op.kind == 'produce'
+        && produceOk(code, cid, request.resource.data.op.item);
+    }
+    function validUndo(code, cid) {
+      return holds(code, cid) && request.resource.data.op.kind == 'undo'
+        && resource.data.log.size() > 0 && undoOk(code, cid);
+    }
+
+    // ---------- 거래로 창고가 바뀌는 쪽 ----------
+    function tradeSideOk(code, cid, tid) {
+      let before = get(tp(code, tid)).data;
+      let after = getAfter(tp(code, tid)).data;
+      let o = resource.data;
+      let n = request.resource.data;
+      let gi = before.give.item;
+      let gq = before.give.qty;
+      let ti = before.get.item;
+      let tq = before.get.qty;
+      return holds(code, before.to) && canTrade(room(code))
+        && before.status == 'pending' && after.status == 'done'
+        && (cid == before.from || cid == before.to)
+        && n.inv.diff(o.inv).affectedKeys().hasOnly([gi, ti])
+        && (cid == before.from
+              ? (n.inv[gi] == o.inv[gi] - gq && n.inv[ti] == o.inv[ti] + tq)
+              : (n.inv[gi] == o.inv[gi] + gq && n.inv[ti] == o.inv[ti] - tq))
+        && n.inv[gi] >= 0 && n.inv[ti] >= 0
+        && n.diff(o).affectedKeys().hasOnly(['inv', 'op']);
+    }
+    function validTradeSide(code, cid) {
+      return request.resource.data.op.kind == 'trade'
+        && tradeSideOk(code, cid, request.resource.data.op.tid);
+    }
+
+    // ---------- 거래 문서 ----------
+    function proposeOk(code) {
+      let t = request.resource.data;
+      let r = room(code);
+      return canTrade(r)
+        && t.status == 'pending' && t.by == request.auth.uid
+        && t.from != t.to && exists(cp(code, t.to))
+        && t.give.item in r.outputs[t.from] && t.get.item in r.outputs[t.from]
+        && t.give.item != t.get.item
+        && isQty(t.give.qty) && isQty(t.get.qty)
+        && t.give.keys().hasOnly(['item', 'qty']) && t.get.keys().hasOnly(['item', 'qty'])
+        && get(cp(code, t.from)).data.inv[t.give.item] >= t.give.qty
+        && t.keys().hasOnly(['from', 'to', 'give', 'get', 'status', 'createdAt', 'by']);
+    }
+    function acceptOk(code, tid) {
+      let o = resource.data;
+      let n = request.resource.data;
+      return o.status == 'pending' && n.status == 'done' && holds(code, o.to)
+        && canTrade(room(code))
+        && n.diff(o).affectedKeys().hasOnly(['status', 'doneAt'])
+        && getAfter(cp(code, o.from)).data.op.tid == tid
+        && getAfter(cp(code, o.to)).data.op.tid == tid;
+    }
+    function rejectOk(code) {
+      let o = resource.data;
+      let n = request.resource.data;
+      return o.status == 'pending'
+        && n.diff(o).affectedKeys().hasOnly(['status'])
+        && ((n.status == 'rejected' && holds(code, o.to)) || (n.status == 'withdrawn' && holds(code, o.from)));
+    }
+
+    match /rooms/{code} {
+      allow get: if signedIn();
+      allow list: if signedIn() && resource.data.ownerUid == request.auth.uid;
+      allow create: if signedIn()
+        && request.auth.token.firebase.sign_in_provider == 'google.com'
+        && request.resource.data.ownerUid == request.auth.uid;
+      allow update: if signedIn() && resource.data.ownerUid == request.auth.uid
+        && request.resource.data.ownerUid == resource.data.ownerUid;
+      allow delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
+
+      match /countries/{cid} {
+        allow read: if signedIn();
+        allow create, delete: if isTeacher(code);
+        allow update: if isTeacher(code)
+          || validProduce(code, cid)
+          || validUndo(code, cid)
+          || validTradeSide(code, cid);
+      }
+
+      match /trades/{tid} {
+        allow read: if signedIn();
+        allow create: if signedIn() && (holds(code, request.resource.data.from) || isTeacher(code)) && proposeOk(code);
+        allow update: if isTeacher(code) || acceptOk(code, tid) || rejectOk(code);
+        allow delete: if isTeacher(code);
+      }
+
+      match /seats/{cid} {
+        allow read: if signedIn();
+        allow create: if signedIn()
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.keys().hasOnly(['uid', 'joinedAt', 'lastSeen'])
+          && exists(cp(code, cid))
+          && !exists(mp(code, request.auth.uid))
+          && getAfter(mp(code, request.auth.uid)).data.cid == cid;
+        allow update: if signedIn() && resource.data.uid == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastSeen']);
+        allow delete: if isTeacher(code);
+      }
+
+      match /members/{uid} {
+        allow get: if signedIn() && (request.auth.uid == uid || isTeacher(code));
+        allow list: if isTeacher(code);
+        allow create: if signedIn() && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['cid'])
+          && getAfter(sp(code, request.resource.data.cid)).data.uid == uid;
+        allow delete: if isTeacher(code);
+      }
+    }
+  }
+}

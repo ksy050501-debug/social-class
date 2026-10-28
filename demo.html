@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>무역의 발견 · 시연 모드</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <div class="brand"><h1>무역의 발견</h1><small>우리나라의 생활을 완성하라</small></div>
+  <span class="stagechip" id="stagechip"></span>
+  <nav class="views" id="views" aria-label="화면 전환"></nav>
+</div></header>
+<main id="main"></main>
+<div id="modal-root"></div>
+<div id="toast-root" aria-live="polite"></div>
+<script src="js/logic.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/local-backend.js"></script>
+<script>
+  const backend = createLocalBackend((S, cfg, ex) => TradeUI.update(S, cfg, ex));
+  const ids = TradeLogic.DEFAULT_CONFIG.countries.map(c => c.id);
+  TradeUI.mount({ backend, mode: 'demo', tabs: ['teacher', ...ids, 'projector'] });
+  backend.start();
+</script>
+</body>
+</html>
