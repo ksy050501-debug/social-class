@@ -41,8 +41,7 @@
     { n: 3, title: '1차 결과 분석 · 2차 계획', round: 1 },
     { n: 5, title: '2차 생산', round: 2 },
     { n: 6, title: '무역 협상 및 거래', round: 2 },
-    { n: 7, title: '실험 결과 비교', round: 2 },
-    { n: 8, title: '최종 탐구 정리', round: 2 }
+    { n: 7, title: '결과 비교 · 정리', round: 2 }
   ];
 
   // 단계 번호(n)는 저장·보안 규칙과 맞추려고 그대로 두고(4는 비움), 화면에는 순서(1~7)로 보여 줌
@@ -146,6 +145,7 @@
     const c = s.countries[countryId]; if (!c) return fail('나라를 찾을 수 없어요.');
     if (!itemById(cfg, itemId)) return fail('물품을 찾을 수 없어요.');
     if (c.chances <= 0) return fail('생산 기회를 모두 사용했어요.');
+    if (s.stage === 5 && !specialties(cfg, countryId).includes(itemId)) return fail('2차에서는 우리 나라가 가장 잘 만드는 물품만 생산할 수 있어요.');
     const amount = output(cfg, countryId, itemId);
     c.chances -= 1;
     c.inv[itemId] += amount;
@@ -225,6 +225,14 @@
   }
 
   /* ---------- 6. 단계 전환 ---------- */
+  // 2차 생산(5) 완료 조건: 모든 나라가 특화 물품을 생산 기회만큼 생산
+  function round2Progress(s, cfg) {
+    return cfg.countries.map((c) => {
+      const sp = specialties(cfg, c.id);
+      const done = (s.countries[c.id] ? s.countries[c.id].log : []).filter((l) => l.round === 2 && sp.includes(l.item)).length;
+      return { id: c.id, name: c.name, done, need: cfg.chances, ok: done >= cfg.chances };
+    });
+  }
   function snapshot(s, cfg) {
     const out = {};
     cfg.countries.forEach((c) => {
@@ -236,6 +244,10 @@
   function setStage(s, cfg, n) {
     if (!STAGES.some((x) => x.n === n)) return fail('없는 단계예요.');
     const from = s.stage;
+    if (from === 5 && n > 5) {
+      const left = round2Progress(s, cfg).filter((x) => !x.ok);
+      if (left.length) return fail('아직 특화 생산을 끝내지 않은 나라가 있어요: ' + left.map((x) => `${x.name} ${x.done}/${x.need}`).join(', '));
+    }
     if (roundOf(from) === 1 && roundOf(n) === 2) {
       // 1차 → 2차: 1차 기록 저장 후 창고·기회 초기화
       s.round1 = snapshot(s, cfg);
@@ -342,7 +354,7 @@
     output, outputTable, specialties, tradeUnit, tradeUnits, security, fmtPct,
     createState, produce, undoProduce, canProduce, canTrade,
     proposeTrade, acceptTrade, rejectTrade, revertTrade, setStage,
-    tradeSummary, productionCounts, totals, verifyAutarky, verifyTradePlan, emptyInv
+    round2Progress, tradeSummary, productionCounts, totals, verifyAutarky, verifyTradePlan, emptyInv
   };
   if (typeof module !== 'undefined') module.exports = root.TradeLogic;
 })(typeof window !== 'undefined' ? window : globalThis);

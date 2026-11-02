@@ -60,7 +60,7 @@ check('매 거래 후 전체 물품 합계 동일', t.conserved);
 { // 무작위 거래 2000회 + 되돌리기
   let ok = true, neg = false;
   const s = L.createState(cfg); L.setStage(s, cfg, 5);
-  cfg.countries.forEach((c) => { for (let i = 0; i < 4; i++) L.produce(s, cfg, c.id, cfg.items[(i + c.id.length) % 4].id); });
+  cfg.countries.forEach((c) => { for (let i = 0; i < 4; i++) L.produce(s, cfg, c.id, L.specialties(cfg, c.id)[0]); });
   L.setStage(s, cfg, 6);
   const base = L.totals(s, cfg);
   const ids = cfg.countries.map((c) => c.id);
@@ -92,7 +92,7 @@ say('\n■ 검증 4. 조작 안정성');
 }
 {
   const s = L.createState(cfg); L.setStage(s, cfg, 5);
-  for (let i = 0; i < 4; i++) { L.produce(s, cfg, 'gaon', 'rice'); L.produce(s, cfg, 'narae', 'oil'); L.produce(s, cfg, 'daon', 'car'); }
+  for (let i = 0; i < 4; i++) { L.produce(s, cfg, 'gaon', 'rice'); L.produce(s, cfg, 'narae', 'oil'); L.produce(s, cfg, 'daon', 'car'); L.produce(s, cfg, 'raon', 'phone'); }
   L.setStage(s, cfg, 6);
   // 가온국 쌀 1600만 톤 중 1400만 톤을 쓴 뒤, 남은 200만 톤으로 두 나라에 동시에 요청 → 하나만 성립해야 함
   s.countries.gaon.inv.rice = 200; s.countries.raon.inv.rice += 1400;
@@ -130,6 +130,21 @@ say('\n■ 검증 4. 조작 안정성');
 }
 
 check('2차 전략 수립(4) 단계는 없음 (3 → 5로 바로 넘어감)', !L.setStage(L.createState(cfg), cfg, 4).ok && L.nextStage(3, 1) === 5);
+
+{
+  const s = L.createState(cfg); L.setStage(s, cfg, 5);
+  check('2차 생산에서 특화 물품이 아닌 물품은 생산 불가', !L.produce(s, cfg, 'gaon', 'oil').ok && s.countries.gaon.chances === 4);
+  for (let i = 0; i < 4; i++) { L.produce(s, cfg, 'gaon', 'rice'); L.produce(s, cfg, 'narae', 'oil'); L.produce(s, cfg, 'daon', 'car'); }
+  L.produce(s, cfg, 'raon', 'phone');
+  const blocked = L.setStage(s, cfg, 6);
+  check('한 나라라도 특화 생산 4번을 안 끝내면 무역 단계로 못 넘어감', !blocked.ok && s.stage === 5 && /라온국 1\/4/.test(blocked.error));
+  check('결과 비교·정리 단계로 건너뛰는 것도 막힘', !L.setStage(s, cfg, 7).ok);
+  check('단계는 모두 6개 (전략 수립·최종 정리 단계 통합)', L.STAGES.length === 6 && !L.setStage(L.createState(cfg), cfg, 8).ok);
+  for (let i = 0; i < 3; i++) L.produce(s, cfg, 'raon', 'phone');
+  check('네 나라 모두 끝내면 무역 단계로 넘어감', L.setStage(s, cfg, 6).ok);
+  const t = L.createState(cfg); L.setStage(t, cfg, 5);
+  check('2차 생산에서 이전 단계(1차)로 돌아가는 것은 가능', L.setStage(t, cfg, 3).ok);
+}
 
 say(`\n결과: ${failures === 0 ? '모든 검증 통과' : failures + '개 실패'}`);
 console.log(out.join('\n'));

@@ -57,19 +57,18 @@ function netError(e){
   if(code.includes('aborted'))return '동시에 여러 요청이 몰렸어요. 다시 눌러 주세요.';
   return '처리하지 못했어요. 다시 눌러 주세요.';
 }
-function ask(title,body,okLabel,onOk,danger){ui.modal={title,body,okLabel,onOk,danger};renderModal()}
+function ask(title,body,okLabel,onOk,danger,single){ui.modal={title,body,okLabel,onOk,danger,single};renderModal()}
 function renderModal(){const r=document.getElementById('modal-root');if(!r)return;if(!ui.modal){r.innerHTML='';return}
-  const m=ui.modal;r.innerHTML=`<div class="modal" role="dialog" aria-modal="true" aria-labelledby="mt"><div class="box"><h2 id="mt" style="font-size:22px">${esc(m.title)}</h2><div>${m.body}</div><div class="row" style="justify-content:flex-end"><button class="btn ghost small" data-a="modal-no">취소</button><button class="btn small ${m.danger?'warn':'accent'}" data-a="modal-yes">${esc(m.okLabel)}</button></div></div></div>`;
+  const m=ui.modal;r.innerHTML=`<div class="modal" role="dialog" aria-modal="true" aria-labelledby="mt"><div class="box"><h2 id="mt" style="font-size:22px">${esc(m.title)}</h2><div>${m.body}</div><div class="row" style="justify-content:flex-end">${m.single?'':'<button class="btn ghost small" data-a="modal-no">취소</button>'}<button class="btn small ${m.danger?'warn':'accent'}" data-a="modal-yes">${esc(m.okLabel)}</button></div></div></div>`;
   r.querySelector('[data-a="modal-yes"]').focus()}
 
 const TEACHER_GUIDE={
  1:['도입','학생 화면에는 우리나라의 물품별 생산 수준과 생산량 비교표가 보입니다.'],
  2:['1차 생산 (자급자족)','무역 없이 생산 기회 4번으로 네 물품 100%에 도전합니다. 어느 나라도 100%가 될 수 없게 설계되어 있으니 선택을 바로잡지 마세요.'],
  3:['1차 결과 분석 · 2차 계획','학생 화면에 1차 결과와 생산량 비교표가 보입니다. 다음 단계로 넘어가면 1차 결과가 저장되고 창고와 생산 기회가 초기화됩니다.'],
- 5:['2차 생산','모둠 계획대로 생산합니다. 남은 기회는 무역 단계에서도 쓸 수 있습니다.'],
+ 5:['2차 생산','각 나라는 가장 잘 만드는 물품만 생산할 수 있고(다른 물품을 누르면 경고창), 네 나라가 모두 4번 생산해야 다음 단계로 넘어갈 수 있습니다.'],
  6:['무역','학생은 무역의 바다에서 배를 몰아 다른 나라 항구에 도착한 뒤, 정해진 양으로 거래를 요청합니다. 요청은 상대 나라 거래 요청함으로 가고, 받은 나라는 수락만 할 수 있습니다.'],
- 7:['결과 비교','학생 화면과 발표 화면에 1차·2차 결과와 무역 흐름이 보입니다.'],
- 8:['정리','학생 화면에는 결과 비교가 그대로 보입니다. 정리 발문은 PPT로 진행합니다.']
+ 7:['결과 비교 · 정리','학생 화면과 발표 화면에 1차·2차 결과와 무역 흐름이 보입니다. 비교와 정리 발문은 PPT로 진행합니다.']
 };
 
 /* ---------- 상단 ---------- */
@@ -315,7 +314,6 @@ function studentView(cid){
   else if(s===3)h+=round1Panel(cid)+infoPanel(cid,true);
   else if(s===5)h+=productionPanel(cid)+infoPanel(cid,false);
   else if(s===6){const sh=shipOf(cid);h+=seaPanel(cid)+(sh.dock&&sh.dock!==cid?portPanel(cid,sh.dock):'')+inboxPanel(cid)+productionPanel(cid)}
-  else if(s===7)h+=comparePanel(cid);
   else h+=comparePanel(cid);
   return h;
 }
@@ -323,6 +321,7 @@ function studentView(cid){
 /* ---------- 교사 화면 ---------- */
 function teacherView(){
   const g=TEACHER_GUIDE[S.stage];
+  const r2=S.stage===5?L.round2Progress(S,cfg):null,r2wait=!!(r2&&r2.some(x=>!x.ok));
   const stages=`<div class="stepper-stages">${L.STAGES.map((s,i)=>`<button data-a="stage" data-n="${s.n}" ${s.n===S.stage?'aria-current="step"':''}><b>${i+1}단계</b>${esc(s.title)}</button>`).join('')}</div>`;
   const cards=cfg.countries.map(c=>{const st=cst(c.id),sec=L.security(cfg,st.inv),sp=L.specialties(cfg,c.id).map(i=>I(i).name).join('·')||'없음';
     const r1=S.round1&&S.round1[c.id]?L.security(cfg,S.round1[c.id].inv).overall:null;
@@ -338,9 +337,9 @@ function teacherView(){
   const tot=L.totals({countries:Object.fromEntries(cfg.countries.map(c=>[c.id,cst(c.id)]))},cfg);
   const demoTail=opts.mode==='demo'?`<section class="panel"><h2>시연 모드</h2><p class="muted" style="margin:0">이 기기 안에서만 저장됩니다. 위쪽 탭으로 나라를 바꿔 가며 수업 흐름을 시험할 수 있고, 같은 브라우저의 다른 탭에서 열어도 상태가 함께 바뀝니다.</p><div class="row" style="margin-top:12px"><button class="btn warn small" data-a="reset">게임 전체 초기화</button></div></section>`:'';
   return `${opts.teacherExtra?opts.teacherExtra():''}<section class="panel"><h2>수업 단계</h2>${stages}
-    <div class="row" style="margin-top:12px;justify-content:space-between"><div class="row"><button class="btn ghost small" data-a="stage" data-n="${L.nextStage(S.stage,-1)}" ${L.nextStage(S.stage,-1)?'':'disabled'}>◀ 이전 단계</button><button class="btn accent small" data-a="stage" data-n="${L.nextStage(S.stage,1)}" ${L.nextStage(S.stage,1)?'':'disabled'}>다음 단계 ▶</button></div>
+    <div class="row" style="margin-top:12px;justify-content:space-between"><div class="row"><button class="btn ghost small" data-a="stage" data-n="${L.nextStage(S.stage,-1)}" ${L.nextStage(S.stage,-1)?'':'disabled'}>◀ 이전 단계</button><button class="btn accent small" data-a="stage" data-n="${L.nextStage(S.stage,1)}" ${L.nextStage(S.stage,1)&&!r2wait?'':'disabled'}>다음 단계 ▶</button></div>
     <div class="row"><label class="switch"><input type="checkbox" id="lock-prod" data-a="lock" data-k="production" ${S.locks.production?'checked':''}>생산 잠금</label><label class="switch"><input type="checkbox" id="lock-trade" data-a="lock" data-k="trade" ${S.locks.trade?'checked':''}>무역 잠금</label><label class="switch"><input type="checkbox" id="allow-undo" data-a="undoflag" ${S.allowUndo?'checked':''}>학생 되돌리기 허용</label></div></div>
-    <div class="callout" style="margin-top:12px"><b>${esc(g[0])}</b> · ${esc(g[1])}</div></section>
+    <div class="callout" style="margin-top:12px"><b>${esc(g[0])}</b> · ${esc(g[1])}${r2?`<div class="row" style="margin-top:8px;gap:6px"><span class="label">특화 생산</span>${r2.map(x=>`<span class="tag" style="background:${x.ok?'var(--good-bg)':'var(--warn-bg)'};color:${x.ok?'var(--good)':'var(--warn)'}">${esc(x.name)} <span class="num">${x.done}/${x.need}</span></span>`).join('')}${r2wait?'<span class="muted" style="font-size:13px">네 나라가 모두 끝내야 다음 단계로 넘어갈 수 있어요.</span>':''}</div>`:''}</div></section>
    <section class="panel"><h2>나라별 현황 <span class="muted" style="font-family:var(--f-body);font-size:13px">특화 물품과 능력치는 교사에게만 보입니다</span></h2><div class="nations">${cards}</div>
     <p class="muted" style="margin:10px 0 0;font-size:13px">전체 물품 합계 · ${cfg.items.map(it=>`${esc(it.name)} <span class="num">${q(tot[it.id],it.id)}</span>`).join(' · ')} (무역은 이 합계를 바꾸지 않습니다)</p></section>
    <section class="panel"><h2>거래 기록</h2>${tlog}</section>
@@ -432,6 +431,8 @@ function onClick(e){
   if(a==='fullscreen'){try{document.documentElement.requestFullscreen().catch(()=>{})}catch(err){}return}
   if(a==='produce'){
     const item=b.dataset.i;
+    if(S.stage===5&&!L.specialties(cfg,cid).includes(item)){const sp=L.specialties(cfg,cid).map(i=>I(i).name).join('·');
+      return ask('잠깐! 이 물품은 생산할 수 없어요',`<p style="margin:0">2차에서는 우리 나라가 <b>가장 잘 만드는 물품(${esc(sp)})</b>을 생산 기회 ${cfg.chances}번 모두 생산해야 해요.</p><p class="muted" style="margin:8px 0 0">네 나라가 모두 끝내야 다음 단계로 갈 수 있어요.</p>`,'알겠어요',()=>{},true,true)}
     return run('p-'+cid,()=>B.produce(cid,item)).then(r=>{if(r&&r.ok){ui.pop={c:cid,i:item,n:r.amount};render(true)}});
   }
   if(a==='undo')return run('p-'+cid,()=>B.undo(cid),'마지막 생산을 되돌렸어요.');
