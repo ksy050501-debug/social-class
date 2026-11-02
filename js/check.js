@@ -9,7 +9,7 @@ const main = el('main');
 const cfg = L.clone(L.DEFAULT_CONFIG);
 const IDS = cfg.countries.map((c) => c.id);
 const SPEC = { gaon: 'rice', narae: 'oil', daon: 'car', raon: 'phone' };
-const U = L.tradeUnits(cfg);   // 고정 거래량: 쌀 200만 톤, 석유 4억 배럴, 자동차 80만 대, 스마트폰 800만 대
+const U = L.tradeUnits(cfg);   // 고정 거래량: 쌀 200만 톤, 석유 400만 톤, 자동차 80만 대, 스마트폰 800만 대
 const deal = (a, b) => [{ item: SPEC[a], qty: U[SPEC[a]] }, { item: SPEC[b], qty: U[SPEC[b]] }];
 let teacher = null;
 
@@ -90,7 +90,7 @@ async function start() {
     log(Object.values(r1).every((v) => v < 100), '1차 자급자족: 어느 나라도 100%가 아님', IDS.map((id) => `${L.countryById(cfg, id).name} ${L.fmtPct(r1[id])}`).join(', '));
 
     await expectOk('교사: 3단계(1차 결과 분석)', TB.setStage(3));
-    await expectOk('교사: 4단계(2차 계획) — 1차 기록 저장 후 초기화', TB.setStage(4));
+    await expectOk('교사: 2차 생산으로 넘어감 — 1차 기록 저장 후 초기화', TB.setStage(5));
     const rd = (await fs.getDoc(roomRefs(fs, T.ctx.db, code).room)).data();
     const g2 = await inv('gaon');
     log(!!rd.round1 && rd.round1.gaon.log.length === 4 && g2.chances === 4 && g2.inv.rice === 0, '1차 기록은 남고 창고·기회는 초기화');
@@ -101,7 +101,7 @@ async function start() {
 
     const total0 = L.totals({ countries: Object.fromEntries(await Promise.all(IDS.map(async (id) => [id, await inv(id)]))) }, cfg);
     const p1 = await B.gaon.propose('gaon', 'narae', ...deal('gaon', 'narae'));
-    log(!!(p1 && p1.ok), `가온국: 나래국에 쌀 ${U.rice}만 톤 ↔ 석유 ${U.oil}억 배럴 거래 요청`);
+    log(!!(p1 && p1.ok), `가온국: 나래국에 쌀 ${U.rice}만 톤 ↔ 석유 ${U.oil}만 톤 거래 요청`);
     await expectDenied('정해진 거래량을 바꾼 요청은 만들 수 없음', fs.setDoc(fs.doc(R('daon').trades), { from: 'daon', to: 'raon', give: { item: 'car', qty: U.car * 3 }, get: { item: 'phone', qty: U.phone }, status: 'pending', createdAt: fs.serverTimestamp(), by: st.daon.uid }));
     await expectDenied('요청을 받은 나라(나래국)는 거절할 수 없음', fs.updateDoc(R('narae').trade(p1.id), { status: 'rejected' }));
     await expectDenied('요청을 받지 않은 나라(다온국)는 대신 수락할 수 없음', fs.runTransaction(st.daon.ctx.db, async (t) => {

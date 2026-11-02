@@ -62,32 +62,20 @@ function renderModal(){const r=document.getElementById('modal-root');if(!r)retur
   const m=ui.modal;r.innerHTML=`<div class="modal" role="dialog" aria-modal="true" aria-labelledby="mt"><div class="box"><h2 id="mt" style="font-size:22px">${esc(m.title)}</h2><div>${m.body}</div><div class="row" style="justify-content:flex-end"><button class="btn ghost small" data-a="modal-no">취소</button><button class="btn small ${m.danger?'warn':'accent'}" data-a="modal-yes">${esc(m.okLabel)}</button></div></div></div>`;
   r.querySelector('[data-a="modal-yes"]').focus()}
 
-const STUDENT_GUIDE={
- 1:'우리나라와 다른 나라의 생산 수준과 생산량을 살펴보세요.',
- 2:'생산 기회 4번으로 국민에게 필요한 물품을 직접 만들어 보세요. 이번에는 다른 나라와 교환할 수 없어요.',
- 3:'1차 실험 결과를 보고 학습지에 분석해 보세요.',
- 4:'다른 나라와 물품을 교환할 수 있다면, 어떤 상품을 생산하는 것이 좋을까요?',
- 5:'모둠이 세운 계획대로 생산하세요. 창고는 비었고 생산 기회는 다시 4번이에요.',
- 6:'배를 몰아 다른 나라 항구로 가서 거래를 요청하세요. 우리에게 온 요청은 거래 요청함에서 수락할 수 있어요.',
- 7:'1차와 2차 결과를 비교하고 학습지에 답해 보세요.',
- 8:'무역이 필요한 까닭을 학습지에 자기 말로 정리해 보세요.'
-};
 const TEACHER_GUIDE={
- 1:['도입 5분','생활 속 수입품(바나나, 휴대폰 부품, 석유 등)을 떠올리며 탐구 문제를 세웁니다.','“모든 물건을 직접 만드는 것보다 다른 나라와 무역하는 것이 왜 유리할까?”'],
- 2:['1차 탐구 8분','무역 없이 생산 기회 4번으로 네 가지 물품 100%에 도전합니다. 학생 선택을 바로잡지 마세요.','“네 가지를 모두 100% 확보할 수 있을까요?”'],
- 3:['결과 분석 5분','개인 학습지에 실패 원인과 유리·불리한 물품을 적고, 생산량 표를 근거로 모둠에서 이야기합니다.','“왜 모든 물품을 100% 확보하지 못했을까요?” “우리나라가 생산에 유리한 물품과 불리한 물품은?”'],
- 4:['2차 탐구 (계획)','이 단계로 넘어오면서 1차 결과가 저장되고 모든 창고와 생산 기회가 초기화되었습니다. 학생은 개인 학습지에 생산 계획을 적은 뒤 모둠 계획을 정합니다.','“다른 나라와 물품을 교환할 수 있다면, 어떤 상품을 생산하는 것이 좋을까요?”'],
- 5:['2차 탐구 (생산)','모둠 계획대로 생산합니다. 생산은 다음 무역 단계에서도 남은 기회만큼 계속할 수 있습니다.','“우리 계획대로 생산했을 때 창고는 어떻게 달라졌나요?”'],
- 6:['2차 탐구 (무역)','학생은 무역의 바다에서 배를 몰아 다른 나라 항구에 도착한 뒤, 정해진 양으로 거래를 요청합니다. 요청은 상대 나라의 거래 요청함으로 가고, 받은 나라는 수락만 할 수 있습니다(거절 없음).','“어느 나라 항구로 가야 할까요? 무엇을 수출하고 무엇을 수입하나요?”'],
- 7:['비교 및 일반화 8분','발표 화면으로 1차·2차 결과를 함께 봅니다. 모든 나라가 함께 나아진 점에 주목하게 합니다.','“1차와 2차는 무엇이 달랐나요?” “다른 나라도 우리와 무역하려 한 까닭은?”'],
- 8:['정리 4분','무역의 필요성을 자기 말로 정리하고, 이 게임이 실제 경제를 단순화한 모형임을 안내합니다.','“나라마다 생산에 유리한 조건이 다른데…” 문장을 학생 말로 완성하게 합니다.']
+ 1:['도입','학생 화면에는 우리나라의 물품별 생산 수준과 생산량 비교표가 보입니다.'],
+ 2:['1차 생산 (자급자족)','무역 없이 생산 기회 4번으로 네 물품 100%에 도전합니다. 어느 나라도 100%가 될 수 없게 설계되어 있으니 선택을 바로잡지 마세요.'],
+ 3:['1차 결과 분석 · 2차 계획','학생 화면에 1차 결과와 생산량 비교표가 보입니다. 다음 단계로 넘어가면 1차 결과가 저장되고 창고와 생산 기회가 초기화됩니다.'],
+ 5:['2차 생산','모둠 계획대로 생산합니다. 남은 기회는 무역 단계에서도 쓸 수 있습니다.'],
+ 6:['무역','학생은 무역의 바다에서 배를 몰아 다른 나라 항구에 도착한 뒤, 정해진 양으로 거래를 요청합니다. 요청은 상대 나라 거래 요청함으로 가고, 받은 나라는 수락만 할 수 있습니다.'],
+ 7:['결과 비교','학생 화면과 발표 화면에 1차·2차 결과와 무역 흐름이 보입니다.'],
+ 8:['정리','학생 화면에는 결과 비교가 그대로 보입니다. 정리 발문은 PPT로 진행합니다.']
 };
-const MODEL_NOTE='이 게임은 무역의 기본 원리를 알아보려고 나라의 생산 조건을 아주 단순하게 만든 학습 모형이에요. 실제 나라들은 수많은 물건을 만들고, 화폐로 사고팔며, 운송비·관세·국제 관계 같은 여러 조건이 함께 작용해요.';
 
 /* ---------- 상단 ---------- */
 function renderTop(){
-  const st=L.STAGES[S.stage-1];
-  const sc=document.getElementById('stagechip');sc.hidden=false;sc.textContent=`${S.stage}단계 · ${st.title}`;
+  const st=L.stageInfo(S.stage);
+  const sc=document.getElementById('stagechip');sc.hidden=opts.mode==='student';sc.textContent=`${L.stageNo(S.stage)}단계 · ${st.title}`;
   const tabs=opts.tabs||[];
   const name=(id)=>id==='teacher'?'교사 관제':id==='projector'?'발표 화면':(C(id)||{}).name;
   const label=opts.mode==='demo'?'<span class="demo-tag">시연 모드</span>':opts.mode==='teacher'?'':'';
@@ -98,8 +86,7 @@ function renderTop(){
 
 /* ---------- 학생 화면 ---------- */
 function nationHead(c){
-  return `<section class="panel" style="--nc:${esc(c.color)}"><div class="nation">${flag(c,72)}<div style="min-width:0"><div class="label">${S.stage}단계 · ${esc(L.STAGES[S.stage-1].title)}${opts.mode==='teacher'?' · 교사가 이 나라를 대신 조작하는 화면':''}</div><h2>${esc(c.name)}</h2><p class="guide" style="margin:0">${esc(STUDENT_GUIDE[S.stage])}</p></div></div>
-  <div class="stage-strip" aria-label="수업 진행">${L.STAGES.map(s=>`<span class="${s.n===S.stage?'on':s.n<S.stage?'done':''}">${s.n}. ${esc(s.title)}</span>`).join('')}</div></section>`;
+  return `<section class="panel" style="--nc:${esc(c.color)}"><div class="nation">${flag(c,72)}<div style="min-width:0">${opts.mode==='teacher'?'<div class="label">교사가 이 나라를 대신 조작하는 화면</div>':''}<h2>${esc(c.name)}</h2></div></div></section>`;
 }
 function levelPips(cid,itemId){
   const it=I(itemId),base=Math.max(1,Math.round(it.target*cfg.weakShare));
@@ -110,7 +97,7 @@ function infoPanel(cid,open){
   const t=L.outputTable(cfg);
   const inner=`<div class="grid2"><div style="min-width:0"><h3>우리나라 생산 수준</h3><div class="tablewrap"><table><thead><tr><th>물품</th><th>생산 수준</th><th>1회 생산량</th><th>필요한 양(목표)</th></tr></thead><tbody>
     ${cfg.items.map(it=>`<tr><td><span class="itemhead">${itemIcon(it.id,26)}${esc(it.name)}</span></td><td>${levelPips(cid,it.id)}</td><td class="num">${q(t[cid][it.id],it.id)}</td><td class="num">${q(it.target,it.id)}</td></tr>`).join('')}
-    </tbody></table></div><p class="muted" style="margin:10px 0 0;font-size:14px">나라마다 땅, 사람, 시설, 기술 같은 생산 조건이 달라서 물품마다 생산 수준이 달라요.</p></div>
+    </tbody></table></div></div>
     <div style="min-width:0"><h3>여러 나라의 1회 생산량 비교</h3><div class="tablewrap"><table><thead><tr><th>나라</th>${cfg.items.map(it=>`<th><span class="itemhead">${itemIcon(it.id,20)}${esc(it.name)}</span></th>`).join('')}</tr></thead><tbody>
     ${cfg.countries.map(o=>`<tr class="${o.id===cid?'me':''}" style="--nc:${esc(o.color)}"><td><span class="itemhead">${flag(o,22)}${esc(o.name)}${o.id===cid?' (우리나라)':''}</span></td>${cfg.items.map(it=>`<td class="num">${q(t[o.id][it.id],it.id)}</td>`).join('')}</tr>`).join('')}
     </tbody></table></div></div></div>`;
@@ -224,14 +211,14 @@ function seaPanel(cid){
     return `<div class="isle${me?' me':''}" style="left:${x/SEA.W*100}%;top:${y/SEA.H*100}%;--nc:${esc(c.color)}"><div class="isle-hd">${flag(c,20)}<b>${esc(c.name)}</b>${me?'<span class="me-tag">우리</span>':''}</div>
       <div class="isle-inv">${cfg.items.map(it=>`<span>${itemIcon(it.id,15)}<span class="num">${fmtN(st.inv[it.id])}</span><small>${esc(it.unit)}</small></span>`).join('')}</div></div>`}).join('');
   const at=s.dock?C(s.dock):null;
-  const banner=at?(s.dock===cid?`<div class="sea-banner">우리 항구에 있어요. 방향키로 다른 나라 항구까지 배를 몰아 보세요.</div>`:`<div class="sea-banner arrive" style="--nc:${esc(at.color)}">${flag(at,20)} <b>${esc(at.name)} 항구</b>에 도착했어요! 아래에서 거래를 요청하세요.</div>`):'';
+  const banner=at?(s.dock===cid?`<div class="sea-banner">다른 나라 항구로 가 보세요.</div>`:`<div class="sea-banner arrive" style="--nc:${esc(at.color)}">${flag(at,20)} <b>${esc(at.name)} 항구</b> 도착!</div>`):'';
   const jump=opts.mode!=='student'?`<div class="row" style="gap:6px"><span class="label">교사용 바로 이동</span>${cfg.countries.map(c=>`<button class="btn ghost small" data-a="sea-jump" data-c="${cid}" data-v="${c.id}">${flag(c,18)}${esc(c.name)}</button>`).join('')}</div>`:'';
   return `<section class="panel"><h2>무역의 바다</h2>
    ${blocked?`<p class="callout" style="margin:0 0 12px">${esc(blocked)}</p>`:''}
    <div class="sea" id="sea">${seaSVG(cid)}${cards}
      <div class="ship" id="ship" data-c="${cid}" style="--nc:${esc(C(cid).color)};left:${s.x/SEA.W*100}%;top:${s.y/SEA.H*100}%"><div class="boat" style="transform:rotate(${s.a}deg) scaleY(${Math.abs(s.a)>90?-1:1})">${BOAT(esc(C(cid).color))}</div></div>${banner}</div>
    <div class="sea-ctrl"><div class="dpad" aria-label="배 움직이기"><button data-dir="up" aria-label="위로">▲</button><button data-dir="left" aria-label="왼쪽으로">◀</button><button data-dir="right" aria-label="오른쪽으로">▶</button><button data-dir="down" aria-label="아래로">▼</button></div>
-     <p class="muted" style="margin:0">키보드 방향키나 화면의 화살표를 <b>누르고 있으면</b> 배가 움직여요. 바위와 섬은 돌아가야 해요. 다른 나라의 <b>항구(점선 동그라미)</b>에 닿으면 거래를 요청할 수 있어요.</p></div>
+     <p class="muted" style="margin:0">방향키를 누르고 있으면 배가 움직여요.</p></div>
    ${jump}</section>`;
 }
 function portPanel(cid,to){
@@ -244,13 +231,13 @@ function portPanel(cid,to){
   const opt=(k,it)=>{const mine=k==='give';const have=(mine?my:th)[it.id]||0;const low=have<U[it.id];const same=!mine&&it.id===d.give;
     return `<button class="opt${d[k]===it.id?' on':''}" data-a="pg" data-c="${cid}" data-v="${to}" data-k="${k}" data-i="${it.id}" ${(mine&&low)||same?'disabled':''} aria-pressed="${d[k]===it.id}">${itemIcon(it.id,30)}<span><b>${esc(it.name)} <span class="num">${q(U[it.id],it.id)}</span></b><small>${mine?'우리':esc(T.name)} 창고 <span class="num">${q(have,it.id)}</span>${low?(mine?' · 부족':' · 지금은 부족'):''}</small></span></button>`};
   const gi=I(d.give),ti=I(d.get);const short=(my[d.give]||0)<U[d.give];const busy=!!ui.busy['tp-'+cid];
-  return `<section class="panel port" style="--nc:${esc(T.color)}"><h2>${flag(T,28)} ${esc(T.name)} 항구 · 거래 요청 쓰기</h2>
+  return `<section class="panel port" style="--nc:${esc(T.color)}"><h2>${flag(T,28)} ${esc(T.name)}에 거래 요청</h2>
    ${pend?`<div class="letter"><div class="label">보낸 요청 · ${esc(T.name)}의 거래 요청함에서 기다리는 중</div><p>“우리 ${esc(I(pend.give.item).name)} <b class="num">${q(pend.give.qty,pend.give.item)}</b>을(를) 줄 테니, ${esc(T.name)}의 ${esc(I(pend.get.item).name)} <b class="num">${q(pend.get.qty,pend.get.item)}</b>을(를) 주세요.”</p>
-     <div class="row"><button class="btn ghost small" data-a="reject" data-c="${cid}" data-t="${pend.id}" ${ui.busy['t-'+pend.id]?'disabled':''}>요청 취소</button><span class="muted" style="font-size:14px">한 나라에는 요청을 하나씩만 보낼 수 있어요.</span></div></div>`
+     <div class="row"><button class="btn ghost small" data-a="reject" data-c="${cid}" data-t="${pend.id}" ${ui.busy['t-'+pend.id]?'disabled':''}>요청 취소</button></div></div>`
    :`<div class="grid2"><div><div class="row" style="margin-bottom:8px"><span class="tag ex">수출</span><b>우리가 줄 물품</b></div><div class="opts">${cfg.items.map(it=>opt('give',it)).join('')}</div></div>
      <div><div class="row" style="margin-bottom:8px"><span class="tag im">수입</span><b>${esc(T.name)}에서 받을 물품</b></div><div class="opts">${cfg.items.map(it=>opt('get',it)).join('')}</div></div></div>
      <div class="letter" style="margin-top:14px"><p>“우리 ${esc(gi.name)} <b class="num">${q(U[d.give],d.give)}</b>을(를) 줄 테니, ${esc(T.name)}의 ${esc(ti.name)} <b class="num">${q(U[d.get],d.get)}</b>을(를) 주세요.”</p>
-     <p class="muted" style="margin:0;font-size:13px">한 번에 주고받는 양은 정해져 있어요(1년 필요량의 절반). 요청은 ${esc(T.name)}의 거래 요청함으로 가고, ${esc(T.name)}이(가) 수락하면 거래가 이루어져요.</p></div>
+</div>
      <button class="btn accent" style="margin-top:12px;width:100%" data-a="sea-propose" data-c="${cid}" data-v="${to}" ${blocked||short||d.give===d.get||busy?'disabled':''}>거래 요청 보내기</button>`}
    </section>`;
 }
@@ -263,7 +250,7 @@ function inboxPanel(cid){
     return `<div class="letter incoming" style="--nc:${esc(A.color)}"><div class="row">${flag(A,22)}<b>${esc(A.name)}에서 온 거래 요청</b></div>
       <p>“우리 ${esc(I(t.give.item).name)} <b class="num">${q(t.give.qty,t.give.item)}</b>을(를) 줄 테니, ${esc(C(cid).name)}의 ${esc(I(t.get.item).name)} <b class="num">${q(t.get.qty,t.get.item)}</b>을(를) 주세요.”</p>
       ${dealText(t,cid)}
-      <div class="row"><button class="btn good" data-a="accept" data-c="${cid}" data-t="${t.id}" ${blocked||lack||b?'disabled':''}>수락하기</button>${lack?`<span style="color:var(--warn);font-size:14px;font-weight:600">우리 창고에 ${esc(I(t.get.item).name)}이(가) 부족해요. 더 생산하면 수락할 수 있어요.</span>`:''}</div></div>`}).join(''):'<p class="muted" style="margin:0">도착한 요청이 없어요.</p>';
+      <div class="row"><button class="btn good" data-a="accept" data-c="${cid}" data-t="${t.id}" ${blocked||lack||b?'disabled':''}>수락하기</button>${lack?`<span style="color:var(--warn);font-size:14px;font-weight:600">${esc(I(t.get.item).name)} 부족</span>`:''}</div></div>`}).join(''):'<p class="muted" style="margin:0">도착한 요청이 없어요.</p>';
   const sentList=sent.length?`<h3>보낸 요청</h3>${sent.map(t=>{const B=C(t.to);return `<div class="deal"><div class="row">${flag(B,20)}<b>${esc(B.name)}</b><span class="tag pend">기다리는 중</span><button class="btn ghost small" style="margin-left:auto" data-a="reject" data-c="${cid}" data-t="${t.id}" ${ui.busy['t-'+t.id]?'disabled':''}>요청 취소</button></div>${dealText(t,cid)}</div>`}).join('')}`:'';
   const ts=L.tradeSummary(S,cfg,cid);
   const ledger=done.length?`<div class="tablewrap"><table><thead><tr><th>거래한 나라</th><th>수출(보냄)</th><th>수입(받음)</th></tr></thead><tbody>${done.slice().reverse().map(t=>{const o=C(t.from===cid?t.to:t.from);const g=t.from===cid?t.give:t.get,r=t.from===cid?t.get:t.give;
@@ -278,9 +265,6 @@ function notifyIncoming(cid){
   if(seen){const fresh=ids.filter(x=>!seen.includes(x));if(fresh.length){const t=S.trades.find(x=>x.id===fresh[fresh.length-1]);toast(`${C(t.from).name}에서 거래 요청이 도착했어요. 거래 요청함을 확인하세요.`)}}
   ui.seenInc[cid]=ids;
 }
-function sheet(title,qs,tip){
-  return `<section class="panel"><h2>${esc(title)} <span class="tag pend" style="font-family:var(--f-body);font-size:13px">개인 학습지</span></h2><ol class="qs">${qs.map(x=>`<li>${esc(x)}</li>`).join('')}</ol><p class="muted" style="margin:10px 0 0">${esc(tip||'각자 학습지에 생각을 적은 뒤 모둠에서 이야기해 보세요.')}</p></section>`;
-}
 function r1Data(cid){return S.round1&&S.round1[cid]?S.round1[cid]:{inv:cst(cid).inv,log:cst(cid).log.filter(l=>l.round===1)}}
 function resultBlock(cid,data,label){
   const sec=L.security(cfg,data.inv);
@@ -290,12 +274,7 @@ function resultBlock(cid,data,label){
 }
 function round1Panel(cid){
   return `<section class="panel"><h2>1차 실험 결과 (자급자족)</h2><div class="grid2">${resultBlock(cid,r1Data(cid),'우리나라')}
-   <div><h3>다른 나라의 종합 확보율</h3><div style="display:grid;gap:8px">${cfg.countries.map(o=>{const s=L.security(cfg,r1Data(o.id).inv);return `<div style="display:grid;grid-template-columns:100px 1fr 70px;gap:8px;align-items:center"><span class="itemhead">${flag(o,22)}${esc(o.name)}</span>${bar('r1o-'+o.id,s.overall,'var(--accent)')}<span class="num" style="text-align:right">${pct(s.overall)}</span></div>`}).join('')}</div></div></div></section>
-   ${sheet('1차 결과 분석',['왜 모든 물품을 100% 확보하지 못했을까요?','우리나라가 생산에 유리한 물품과 불리한 물품은 무엇인가요?'])}`;
-}
-function strategyPanel(cid){
-  return `<section class="panel"><h2>2차 생산 계획 세우기</h2><p class="callout" style="margin:0;font-size:18px"><b>다른 나라와 물품을 교환할 수 있다면, 어떤 상품을 생산하는 것이 좋을까요?</b><br><span class="muted" style="font-size:15px">1차 결과와 생산량 비교표를 근거로 각자 학습지에 생산 계획과 까닭을 적은 뒤, 모둠의 계획을 하나로 정하세요.</span></p></section>
-   <section class="panel"><h2>참고: 우리나라 1차 결과</h2>${resultBlock(cid,r1Data(cid),'1차 실험')}</section>`;
+   <div><h3>다른 나라의 종합 확보율</h3><div style="display:grid;gap:8px">${cfg.countries.map(o=>{const s=L.security(cfg,r1Data(o.id).inv);return `<div style="display:grid;grid-template-columns:100px 1fr 70px;gap:8px;align-items:center"><span class="itemhead">${flag(o,22)}${esc(o.name)}</span>${bar('r1o-'+o.id,s.overall,'var(--accent)')}<span class="num" style="text-align:right">${pct(s.overall)}</span></div>`}).join('')}</div></div></div></section>`;
 }
 function flowSVG(me){
   const ids=cfg.countries.map(c=>c.id),n=ids.length,W=680,H=420,cx=W/2,cy=H/2;
@@ -327,30 +306,24 @@ function comparePanel(cid){
      <div class="b"><span class="muted">2차</span>${bar('c2'+cid+it.id,s2.per[it.id],itemColor(it.id))}<span class="num">${pct(s2.per[it.id])}</span></div></div></div>`).join('')}</div></section>
    <section class="grid2"><div class="panel"><h2>생산 전략 비교</h2><div style="display:grid;gap:10px"><div><div class="label">1차에 생산한 물품</div><div class="chips">${counts(d1.log)}</div></div><div><div class="label">2차에 생산한 물품</div><div class="chips">${counts(st.log.filter(l=>l.round===2))}</div></div>
      <div><div class="label"><span class="tag ex">수출</span> 다른 나라에 보낸 물품</div><div class="chips" style="margin-top:4px">${list(ts.exports)}</div></div><div><div class="label"><span class="tag im">수입</span> 다른 나라에서 받은 물품</div><div class="chips" style="margin-top:4px">${list(ts.imports)}</div></div></div></div>
-   <div class="panel"><h2>나라 사이 무역 흐름</h2>${flowSVG(cid)}</div></section>
-   ${sheet('결과 비교 질문',['1차 실험과 2차 실험은 무엇이 달랐나요?','우리나라는 어떤 물품을 집중 생산했나요? 그 이유는 무엇인가요?','무역을 통해 우리나라가 얻은 것은 무엇인가요?','다른 나라에서도 우리나라와 무역하려고 한 이유는 무엇인가요?'])}`;
-}
-function finalPanel(){
-  return `${sheet('최종 탐구 정리',['국가 간 무역이 필요한 이유를 우리 말로 설명해 봅시다.'],'학습지에 자기 말로 정리한 뒤 발표해 보세요.')}
-   <section class="panel"><h2>알아 두기</h2><p class="callout" style="margin:0">${esc(MODEL_NOTE)}</p></section>`;
+   <div class="panel"><h2>나라 사이 무역 흐름</h2>${flowSVG(cid)}</div></section>`;
 }
 function studentView(cid){
   const s=S.stage;let h=nationHead(C(cid));
   if(s===1)h+=infoPanel(cid,true);
   else if(s===2)h+=productionPanel(cid)+infoPanel(cid,false);
-  else if(s===3)h+=round1Panel(cid);
-  else if(s===4)h+=strategyPanel(cid)+infoPanel(cid,true);
+  else if(s===3)h+=round1Panel(cid)+infoPanel(cid,true);
   else if(s===5)h+=productionPanel(cid)+infoPanel(cid,false);
   else if(s===6){const sh=shipOf(cid);h+=seaPanel(cid)+(sh.dock&&sh.dock!==cid?portPanel(cid,sh.dock):'')+inboxPanel(cid)+productionPanel(cid)}
   else if(s===7)h+=comparePanel(cid);
-  else h+=finalPanel()+comparePanel(cid);
+  else h+=comparePanel(cid);
   return h;
 }
 
 /* ---------- 교사 화면 ---------- */
 function teacherView(){
   const g=TEACHER_GUIDE[S.stage];
-  const stages=`<div class="stepper-stages">${L.STAGES.map(s=>`<button data-a="stage" data-n="${s.n}" ${s.n===S.stage?'aria-current="step"':''}><b>${s.n}단계</b>${esc(s.title)}</button>`).join('')}</div>`;
+  const stages=`<div class="stepper-stages">${L.STAGES.map((s,i)=>`<button data-a="stage" data-n="${s.n}" ${s.n===S.stage?'aria-current="step"':''}><b>${i+1}단계</b>${esc(s.title)}</button>`).join('')}</div>`;
   const cards=cfg.countries.map(c=>{const st=cst(c.id),sec=L.security(cfg,st.inv),sp=L.specialties(cfg,c.id).map(i=>I(i).name).join('·')||'없음';
     const r1=S.round1&&S.round1[c.id]?L.security(cfg,S.round1[c.id].inv).overall:null;
     const seat=extra.seats?extra.seats[c.id]:null;
@@ -365,9 +338,9 @@ function teacherView(){
   const tot=L.totals({countries:Object.fromEntries(cfg.countries.map(c=>[c.id,cst(c.id)]))},cfg);
   const demoTail=opts.mode==='demo'?`<section class="panel"><h2>시연 모드</h2><p class="muted" style="margin:0">이 기기 안에서만 저장됩니다. 위쪽 탭으로 나라를 바꿔 가며 수업 흐름을 시험할 수 있고, 같은 브라우저의 다른 탭에서 열어도 상태가 함께 바뀝니다.</p><div class="row" style="margin-top:12px"><button class="btn warn small" data-a="reset">게임 전체 초기화</button></div></section>`:'';
   return `${opts.teacherExtra?opts.teacherExtra():''}<section class="panel"><h2>수업 단계</h2>${stages}
-    <div class="row" style="margin-top:12px;justify-content:space-between"><div class="row"><button class="btn ghost small" data-a="stage" data-n="${S.stage-1}" ${S.stage<=1?'disabled':''}>◀ 이전 단계</button><button class="btn accent small" data-a="stage" data-n="${S.stage+1}" ${S.stage>=8?'disabled':''}>다음 단계 ▶</button></div>
+    <div class="row" style="margin-top:12px;justify-content:space-between"><div class="row"><button class="btn ghost small" data-a="stage" data-n="${L.nextStage(S.stage,-1)}" ${L.nextStage(S.stage,-1)?'':'disabled'}>◀ 이전 단계</button><button class="btn accent small" data-a="stage" data-n="${L.nextStage(S.stage,1)}" ${L.nextStage(S.stage,1)?'':'disabled'}>다음 단계 ▶</button></div>
     <div class="row"><label class="switch"><input type="checkbox" id="lock-prod" data-a="lock" data-k="production" ${S.locks.production?'checked':''}>생산 잠금</label><label class="switch"><input type="checkbox" id="lock-trade" data-a="lock" data-k="trade" ${S.locks.trade?'checked':''}>무역 잠금</label><label class="switch"><input type="checkbox" id="allow-undo" data-a="undoflag" ${S.allowUndo?'checked':''}>학생 되돌리기 허용</label></div></div>
-    <div class="callout" style="margin-top:12px"><b>${esc(g[0])}</b> · ${esc(g[1])}<br><span class="muted">발문</span> ${esc(g[2])}</div></section>
+    <div class="callout" style="margin-top:12px"><b>${esc(g[0])}</b> · ${esc(g[1])}</div></section>
    <section class="panel"><h2>나라별 현황 <span class="muted" style="font-family:var(--f-body);font-size:13px">특화 물품과 능력치는 교사에게만 보입니다</span></h2><div class="nations">${cards}</div>
     <p class="muted" style="margin:10px 0 0;font-size:13px">전체 물품 합계 · ${cfg.items.map(it=>`${esc(it.name)} <span class="num">${q(tot[it.id],it.id)}</span>`).join(' · ')} (무역은 이 합계를 바꾸지 않습니다)</p></section>
    <section class="panel"><h2>거래 기록</h2>${tlog}</section>
@@ -401,9 +374,8 @@ function settingsPanel(){
 
 /* ---------- 발표 화면 ---------- */
 function projectorView(){
-  const st=L.STAGES[S.stage-1];
-  const Q={1:'모든 물건을 직접 만드는 것보다 다른 나라와 무역하는 것이 왜 유리할까?',2:'네 가지 물품을 모두 100% 확보할 수 있을까요?',3:'왜 모든 물품을 100% 확보하지 못했을까요?',4:'다른 나라와 물품을 교환할 수 있다면, 어떤 상품을 생산하는 것이 좋을까요?',5:'우리 모둠의 계획대로 생산해 봅시다.',6:'배를 몰아 다른 나라 항구로! 무엇을 수출하고 무엇을 수입하나요?',7:'1차와 2차는 무엇이 달랐나요? 모든 나라가 함께 나아졌나요?',8:'나라마다 생산에 유리한 조건이 다르기 때문에…'};
-  const showR1=S.stage===3||S.stage===4;
+  const st=L.stageInfo(S.stage);
+  const showR1=S.stage===3;
   const data=(id)=>showR1?r1Data(id):cst(id);
   const all=cfg.countries.map(c=>L.security(cfg,data(c.id).inv).overall);
   const avg=Math.round(all.reduce((a,b)=>a+b,0)/all.length*100)/100;
@@ -411,12 +383,11 @@ function projectorView(){
   const cards=cfg.countries.map(c=>{const d=data(c.id),sec=L.security(cfg,d.inv);const r1=S.round1&&S.stage>=7?L.security(cfg,r1Data(c.id).inv).overall:null;
     return `<div class="ncard" style="--nc:${esc(c.color)}"><div class="hd">${flag(c,40)}<h3>${esc(c.name)}</h3><b class="num" style="margin-left:auto;font-size:24px">${r1!==null?`<span class="muted" style="font-size:16px">${pct(r1)} →</span> `:''}${pct(sec.overall)}</b></div>
      <div class="mini">${cfg.items.map(it=>`${itemIcon(it.id,24)}${bar('p-'+c.id+it.id,sec.per[it.id],itemColor(it.id))}<span class="num">${pct(sec.per[it.id])}</span>`).join('')}</div></div>`}).join('');
-  return `<div class="proj"><div class="hero"><div class="row" style="justify-content:space-between"><span style="opacity:.7">${S.stage}단계 · ${esc(st.title)}</span>${document.fullscreenEnabled?`<button class="btn ghost small" data-a="fullscreen" style="color:var(--bg);box-shadow:inset 0 0 0 1.5px currentColor">전체 화면</button>`:''}</div><h2>${esc(Q[S.stage])}</h2></div>
+  return `<div class="proj"><div class="hero"><div class="row" style="justify-content:space-between"><span style="opacity:.7">${L.stageNo(S.stage)}단계</span>${document.fullscreenEnabled?`<button class="btn ghost small" data-a="fullscreen" style="color:var(--bg);box-shadow:inset 0 0 0 1.5px currentColor">전체 화면</button>`:''}</div><h2>${esc(st.title)}</h2></div>
    <section class="panel"><div class="together"><div><div class="label">${showR1?'1차 실험 · ':''}네 나라가 함께 확보한 국민 생활 물품</div><div class="v num">${pct(avg)}</div></div>
      <div style="flex:1;min-width:200px">${bar('p-avg',avg,'var(--accent)',true)}${avg1!==null&&S.stage>=7?`<p class="muted" style="margin:8px 0 0">1차 자급자족 때는 <b class="num">${pct(avg1)}</b>였어요.</p>`:''}</div></div></section>
    <section class="nations">${cards}</section>
-   ${S.stage>=6?`<section class="panel"><h2>나라 사이 무역 흐름</h2>${flowSVG(null)}</section>`:''}
-   ${S.stage===8?`<section class="panel"><p class="callout" style="margin:0;font-size:18px">${esc(MODEL_NOTE)}</p></section>`:''}</div>`;
+   ${S.stage>=6?`<section class="panel"><h2>나라 사이 무역 흐름</h2>${flowSVG(null)}</section>`:''}</div>`;
 }
 
 /* ---------- 렌더링 ---------- */
@@ -472,8 +443,8 @@ function onClick(e){
   if(a==='reject')return run('t-'+b.dataset.t,()=>B.reject(cid,b.dataset.t),'요청을 취소했어요.');
   if(a==='revert'){const t=b.dataset.t;return ask('이 거래를 취소할까요?','두 나라의 창고를 거래 전으로 되돌립니다. 이미 다른 거래에 쓰인 물품이 있으면 취소할 수 없습니다.','거래 취소',()=>run('t-'+t,()=>B.revert(t),'거래를 취소했습니다.'),true)}
   if(a==='t-cancel'){const t=b.dataset.t;return run('t-'+t,()=>B.cancelTrade(t),'제안을 무효 처리했습니다.')}
-  if(a==='stage'){const n=Number(b.dataset.n);if(n===S.stage||n<1||n>8)return;
-    const go=()=>run('stage',()=>B.setStage(n),`${n}단계로 바꿨습니다.`);
+  if(a==='stage'){const n=Number(b.dataset.n);if(n===S.stage||!L.STAGES.some(x=>x.n===n))return;
+    const go=()=>run('stage',()=>B.setStage(n),`${L.stageNo(n)}단계로 바꿨습니다.`);
     if(L.roundOf(S.stage)===1&&L.roundOf(n)===2)return ask('2차 실험을 시작할까요?','1차 결과를 저장한 뒤, 모든 나라의 창고를 비우고 생산 기회를 다시 '+cfg.chances+'번으로 돌립니다.','2차 시작',go);
     if(L.roundOf(S.stage)===2&&L.roundOf(n)===1)return ask('1차 단계로 돌아갈까요?','저장해 둔 1차 결과로 되돌아가며, 2차 생산과 거래 기록은 지워집니다.','1차로 돌아가기',go,true);
     return go()}

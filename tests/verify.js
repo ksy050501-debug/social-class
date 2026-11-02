@@ -13,7 +13,7 @@ const itemName = (id) => L.itemById(cfg, id).name;
 
 say('■ 생산 규칙: 물품의 핵심 조건이 5인 나라는 1회에 목표량, 아니면 목표량의 1/4');
 const table = L.outputTable(cfg);
-const spec = { gaon: [400, 2, 40, 400], narae: [100, 8, 40, 400], daon: [100, 2, 160, 400], raon: [100, 2, 40, 1600] };
+const spec = { gaon: [400, 200, 40, 400], narae: [100, 800, 40, 400], daon: [100, 200, 160, 400], raon: [100, 200, 40, 1600] };
 for (const c of cfg.countries) {
   const row = cfg.items.map((it) => table[c.id][it.id]);
   say(`  ${c.name}: ` + cfg.items.map((it, i) => `${it.name} ${row[i]}${it.unit}`).join(', '));
@@ -87,7 +87,7 @@ say('\n■ 검증 4. 조작 안정성');
   const r2 = L.produce(s, cfg, 'gaon', 'rice', 'tap-1'); // 같은 요청이 두 번 도착
   check('같은 생산 요청 중복 처리 안 됨', r1.ok && !r2.ok && s.countries.gaon.chances === 3 && s.countries.gaon.inv.rice === 400);
   for (let i = 0; i < 10; i++) L.produce(s, cfg, 'gaon', 'oil');
-  check('빠른 연타 10회 → 남은 기회까지만 생산', s.countries.gaon.chances === 0 && s.countries.gaon.inv.oil === 6);
+  check('빠른 연타 10회 → 남은 기회까지만 생산', s.countries.gaon.chances === 0 && s.countries.gaon.inv.oil === 600);
   check('1차 단계에서 무역 시도 차단', !L.proposeTrade(s, cfg, 'gaon', 'narae', { item: 'rice', qty: U.rice }, { item: 'oil', qty: U.oil }).ok);
 }
 {
@@ -119,7 +119,7 @@ say('\n■ 검증 4. 조작 안정성');
 {
   const s = L.createState(cfg); L.setStage(s, cfg, 2);
   cfg.items.forEach((it) => L.produce(s, cfg, 'gaon', it.id));
-  L.setStage(s, cfg, 3); L.setStage(s, cfg, 4);
+  L.setStage(s, cfg, 3); L.setStage(s, cfg, 5);
   check('2차 진입 시 창고 0·기회 4로 초기화', s.countries.gaon.chances === 4 && s.countries.gaon.inv.rice === 0);
   check('1차 결과 기록은 보존 (가온국 43.75%)', s.round1.gaon.sec.overall === 43.75 && s.round1.gaon.log.length === 4);
   L.setStage(s, cfg, 5); L.produce(s, cfg, 'gaon', 'rice');
@@ -128,6 +128,8 @@ say('\n■ 검증 4. 조작 안정성');
   s.allowUndo = false; L.produce(s, cfg, 'gaon', 'rice');
   check('교사가 되돌리기를 끄면 취소 불가', !L.undoProduce(s, cfg, 'gaon').ok);
 }
+
+check('2차 전략 수립(4) 단계는 없음 (3 → 5로 바로 넘어감)', !L.setStage(L.createState(cfg), cfg, 4).ok && L.nextStage(3, 1) === 5);
 
 say(`\n결과: ${failures === 0 ? '모든 검증 통과' : failures + '개 실패'}`);
 console.log(out.join('\n'));

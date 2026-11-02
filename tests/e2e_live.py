@@ -12,8 +12,8 @@ PORT = 8123
 BASE = f'http://127.0.0.1:{PORT}'
 IDS = ['gaon', 'narae', 'daon', 'raon']
 SPEC = {'gaon': 'rice', 'narae': 'oil', 'daon': 'car', 'raon': 'phone'}
-QTY = {'rice': 400, 'oil': 8, 'car': 160, 'phone': 1600}   # 1년 목표량
-UNIT = {'rice': 200, 'oil': 4, 'car': 80, 'phone': 800}   # 고정 거래량 (목표량의 절반)
+QTY = {'rice': 400, 'oil': 800, 'car': 160, 'phone': 1600}   # 1년 목표량
+UNIT = {'rice': 200, 'oil': 400, 'car': 80, 'phone': 800}   # 고정 거래량 (목표량의 절반)
 results = []
 
 def check(name, cond, detail=''):
@@ -113,8 +113,7 @@ async def main():
             await S['daon'].screenshot(path=f'{SHOTS}/s2-round1.png', full_page=True)
 
             await stage(3)
-            await stage(4, confirm=True)
-            await stage(5)
+            await stage(5, confirm=True)
             for cid in IDS: await produce(cid, SPEC[cid], 4)
             await asyncio.sleep(0.5)
             await stage(6)
@@ -145,7 +144,7 @@ async def main():
             await request('gaon', 'narae', 'rice', 'oil')
             st = json.loads(await fsget())
             tr = [v['d'] for k, v in st.items() if k.startswith(f'rooms/{code}/trades/')]
-            check('요청 수량은 정해진 양(쌀 200만 톤 ↔ 석유 4억 배럴)', len(tr) == 1 and tr[0]['give']['qty'] == UNIT['rice'] and tr[0]['get']['qty'] == UNIT['oil'], str(tr))
+            check('요청 수량은 정해진 양(쌀 200만 톤 ↔ 석유 400만 톤)', len(tr) == 1 and tr[0]['give']['qty'] == UNIT['rice'] and tr[0]['get']['qty'] == UNIT['oil'], str(tr))
             await S['narae'].wait_for_selector('.letter.incoming [data-a=accept]')
             n_rej = await S['narae'].locator('.letter.incoming [data-a=reject]').count()
             check('받은 요청에는 수락 버튼만 있음(거절 없음)', n_rej == 0)

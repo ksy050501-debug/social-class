@@ -20,10 +20,10 @@
       { id: 'tech',     name: '기술력', desc: '물건을 효율적으로 만드는 기술 수준' }
     ],
     // key: 이 물품을 만들 때 가장 중요한 생산 조건
-    // target: 한 나라 국민이 1년 동안 쓰는 양 (실제 우리나라 1년 소비 규모에 가깝게)
+    // target: 한 나라 국민이 1년 동안 쓰는 양 (단위는 '만 톤'과 '만 대' 두 가지로만)
     items: [
       { id: 'rice',  name: '쌀',     unit: '만 톤',   target: 400,  key: 'labor'    },
-      { id: 'oil',   name: '석유',   unit: '억 배럴', target: 8,    key: 'resource' },
+      { id: 'oil',   name: '석유',   unit: '만 톤',   target: 800,  key: 'resource' },
       { id: 'car',   name: '자동차', unit: '만 대',   target: 160,  key: 'capital'  },
       { id: 'phone', name: '스마트폰', unit: '만 대', target: 1600, key: 'tech'     }
     ],
@@ -38,14 +38,17 @@
   const STAGES = [
     { n: 1, title: '대기 · 국가 정보 확인', round: 1 },
     { n: 2, title: '1차 생산 실험 (자급자족)', round: 1 },
-    { n: 3, title: '1차 결과 분석', round: 1 },
-    { n: 4, title: '2차 전략 수립', round: 2 },
+    { n: 3, title: '1차 결과 분석 · 2차 계획', round: 1 },
     { n: 5, title: '2차 생산', round: 2 },
     { n: 6, title: '무역 협상 및 거래', round: 2 },
     { n: 7, title: '실험 결과 비교', round: 2 },
     { n: 8, title: '최종 탐구 정리', round: 2 }
   ];
 
+  // 단계 번호(n)는 저장·보안 규칙과 맞추려고 그대로 두고(4는 비움), 화면에는 순서(1~7)로 보여 줌
+  const stageInfo = (n) => STAGES.find((s) => s.n === n) || STAGES[0];
+  const stageNo = (n) => STAGES.findIndex((s) => s.n === n) + 1;
+  const nextStage = (n, dir) => { const i = STAGES.findIndex((s) => s.n === n) + dir; return i >= 0 && i < STAGES.length ? STAGES[i].n : null; };
   const clone = (o) => JSON.parse(JSON.stringify(o));
   const itemById = (cfg, id) => cfg.items.find((i) => i.id === id);
   const countryById = (cfg, id) => cfg.countries.find((c) => c.id === id);
@@ -231,7 +234,7 @@
     return out;
   }
   function setStage(s, cfg, n) {
-    if (n < 1 || n > STAGES.length) return fail('없는 단계예요.');
+    if (!STAGES.some((x) => x.n === n)) return fail('없는 단계예요.');
     const from = s.stage;
     if (roundOf(from) === 1 && roundOf(n) === 2) {
       // 1차 → 2차: 1차 기록 저장 후 창고·기회 초기화
@@ -335,7 +338,7 @@
   }
 
   root.TradeLogic = {
-    DEFAULT_CONFIG, STAGES, clone, itemById, countryById, roundOf,
+    DEFAULT_CONFIG, STAGES, stageInfo, stageNo, nextStage, clone, itemById, countryById, roundOf,
     output, outputTable, specialties, tradeUnit, tradeUnits, security, fmtPct,
     createState, produce, undoProduce, canProduce, canTrade,
     proposeTrade, acceptTrade, rejectTrade, revertTrade, setStage,
