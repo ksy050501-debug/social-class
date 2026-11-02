@@ -13,11 +13,11 @@ const itemName = (id) => L.itemById(cfg, id).name;
 
 say('■ 생산 규칙: 물품의 핵심 조건이 5인 나라는 1회에 목표량, 아니면 목표량의 1/4');
 const table = L.outputTable(cfg);
-const spec = { gaon: [20, 5, 3, 4], narae: [5, 20, 3, 4], daon: [5, 5, 12, 4], raon: [5, 5, 3, 16] };
+const spec = { gaon: [400, 2, 40, 400], narae: [100, 8, 40, 400], daon: [100, 2, 160, 400], raon: [100, 2, 40, 1600] };
 for (const c of cfg.countries) {
   const row = cfg.items.map((it) => table[c.id][it.id]);
   say(`  ${c.name}: ` + cfg.items.map((it, i) => `${it.name} ${row[i]}${it.unit}`).join(', '));
-  check(`${c.name} 생산량이 의뢰서 표와 일치`, JSON.stringify(row) === JSON.stringify(spec[c.id]));
+  check(`${c.name} 생산량이 설계 표와 일치`, JSON.stringify(row) === JSON.stringify(spec[c.id]));
 }
 
 say('\n■ 검증 1. 1차(자급자족)에서는 어떤 조합으로도 100% 불가능');
@@ -52,8 +52,9 @@ say('\n■ 검증 2. 2차(무역)에서 특화 생산 + 교환으로 모두 100%
 const t = L.verifyTradePlan(cfg);
 t.trades.forEach((x) => say(`  ${name(x.a)} ${itemName(x.give.item)} ${x.give.qty} ⇄ ${name(x.b)} ${itemName(x.get.item)} ${x.get.qty}  ${x.ok ? '성립' : '실패: ' + x.error}`));
 say('  최종 종합 확보율: ' + Object.entries(t.final).map(([k, v]) => `${name(k)} ${L.fmtPct(v)}`).join(', '));
-check('6건 거래로 네 나라 모두 100%', t.pass);
+check(t.trades.length + '건 거래(거래량 고정)로 네 나라 모두 100%', t.pass);
 
+const U = L.tradeUnits(cfg);
 say('\n■ 검증 3. 무역은 물품을 만들거나 없애지 않음');
 check('매 거래 후 전체 물품 합계 동일', t.conserved);
 { // 무작위 거래 2000회 + 되돌리기
@@ -66,7 +67,9 @@ check('매 거래 후 전체 물품 합계 동일', t.conserved);
   let rnd = 7; const r = (n) => { rnd = (rnd * 1103515245 + 12345) % 2147483648; return rnd % n; };
   for (let i = 0; i < 2000; i++) {
     const A = ids[r(4)], B = ids[r(4)];
-    const p = L.proposeTrade(s, cfg, A, B, { item: cfg.items[r(4)].id, qty: 1 + r(20) }, { item: cfg.items[r(4)].id, qty: 1 + r(20) });
+    const gi = cfg.items[r(4)].id, ti = cfg.items[r(4)].id;
+    const p = L.proposeTrade(s, cfg, A, B, { item: gi, qty: U[gi] }, { item: ti, qty: U[ti] });
+    if (r(4) === 0) { const pend = s.trades.filter((x) => x.status === 'pending'); if (pend.length) { const x = pend[r(pend.length)]; L.rejectTrade(s, x.id, x.from); } }
     if (p.ok) { if (r(2)) L.acceptTrade(s, cfg, p.trade.id, B); }
     if (r(10) === 0) { const d = s.trades.filter((x) => x.status === 'done'); if (d.length) L.revertTrade(s, d[r(d.length)].id); }
     const now = L.totals(s, cfg);
@@ -82,25 +85,30 @@ say('\n■ 검증 4. 조작 안정성');
   const s = L.createState(cfg); L.setStage(s, cfg, 2);
   const r1 = L.produce(s, cfg, 'gaon', 'rice', 'tap-1');
   const r2 = L.produce(s, cfg, 'gaon', 'rice', 'tap-1'); // 같은 요청이 두 번 도착
-  check('같은 생산 요청 중복 처리 안 됨', r1.ok && !r2.ok && s.countries.gaon.chances === 3 && s.countries.gaon.inv.rice === 20);
+  check('같은 생산 요청 중복 처리 안 됨', r1.ok && !r2.ok && s.countries.gaon.chances === 3 && s.countries.gaon.inv.rice === 400);
   for (let i = 0; i < 10; i++) L.produce(s, cfg, 'gaon', 'oil');
-  check('빠른 연타 10회 → 남은 기회까지만 생산', s.countries.gaon.chances === 0 && s.countries.gaon.inv.oil === 15);
-  check('1차 단계에서 무역 시도 차단', !L.proposeTrade(s, cfg, 'gaon', 'narae', { item: 'rice', qty: 1 }, { item: 'oil', qty: 1 }).ok);
+  check('빠른 연타 10회 → 남은 기회까지만 생산', s.countries.gaon.chances === 0 && s.countries.gaon.inv.oil === 6);
+  check('1차 단계에서 무역 시도 차단', !L.proposeTrade(s, cfg, 'gaon', 'narae', { item: 'rice', qty: U.rice }, { item: 'oil', qty: U.oil }).ok);
 }
 {
   const s = L.createState(cfg); L.setStage(s, cfg, 5);
   for (let i = 0; i < 4; i++) { L.produce(s, cfg, 'gaon', 'rice'); L.produce(s, cfg, 'narae', 'oil'); L.produce(s, cfg, 'daon', 'car'); }
   L.setStage(s, cfg, 6);
-  // 가온국이 쌀 80kg 중 70kg씩 두 나라에 동시에 제안 → 하나만 성립해야 함
-  const p1 = L.proposeTrade(s, cfg, 'gaon', 'narae', { item: 'rice', qty: 70 }, { item: 'oil', qty: 10 });
-  const p2 = L.proposeTrade(s, cfg, 'gaon', 'daon', { item: 'rice', qty: 70 }, { item: 'car', qty: 10 });
+  // 가온국 쌀 1600만 톤 중 1400만 톤을 쓴 뒤, 남은 200만 톤으로 두 나라에 동시에 요청 → 하나만 성립해야 함
+  s.countries.gaon.inv.rice = 200; s.countries.raon.inv.rice += 1400;
+  const p1 = L.proposeTrade(s, cfg, 'gaon', 'narae', { item: 'rice', qty: U.rice }, { item: 'oil', qty: U.oil });
+  const p2 = L.proposeTrade(s, cfg, 'gaon', 'daon', { item: 'rice', qty: U.rice }, { item: 'car', qty: U.car });
   const a1 = L.acceptTrade(s, cfg, p1.trade.id, 'narae');
   const a2 = L.acceptTrade(s, cfg, p2.trade.id, 'daon');
-  check('같은 재고를 쓰는 두 거래 중 하나만 성립', a1.ok && !a2.ok && s.countries.gaon.inv.rice === 10);
+  check('같은 재고를 쓰는 두 거래 중 하나만 성립', a1.ok && !a2.ok && s.countries.gaon.inv.rice === 0);
   const a1b = L.acceptTrade(s, cfg, p1.trade.id, 'narae');
-  check('이미 성립한 거래 다시 수락해도 중복 반영 안 됨', !a1b.ok && s.countries.narae.inv.rice === 70);
+  check('이미 성립한 거래 다시 수락해도 중복 반영 안 됨', !a1b.ok && s.countries.narae.inv.rice === U.rice);
   check('거래 당사자가 아닌 나라는 수락 불가', !L.acceptTrade(s, cfg, p2.trade.id, 'raon').ok);
-  const p3 = L.proposeTrade(s, cfg, 'daon', 'narae', { item: 'car', qty: 12 }, { item: 'oil', qty: 20 });
+  check('거래량을 바꾼 요청은 거부', !L.proposeTrade(s, cfg, 'daon', 'narae', { item: 'car', qty: U.car + 1 }, { item: 'oil', qty: U.oil }).ok);
+  check('받은 나라는 요청을 거절할 수 없음', !L.rejectTrade(s, p2.trade.id, 'daon').ok && p2.trade.status === 'pending');
+  check('보낸 나라는 요청을 취소할 수 있음', L.rejectTrade(s, p2.trade.id, 'gaon').ok && p2.trade.status === 'withdrawn');
+  const p3 = L.proposeTrade(s, cfg, 'daon', 'narae', { item: 'car', qty: U.car }, { item: 'oil', qty: U.oil });
+  check('같은 나라에 기다리는 요청이 있으면 또 보낼 수 없음', p3.ok && !L.proposeTrade(s, cfg, 'daon', 'narae', { item: 'car', qty: U.car }, { item: 'rice', qty: U.rice }).ok);
   L.setStage(s, cfg, 7); // 교사가 단계 변경
   check('단계가 바뀌는 중 들어온 수락은 거부', !L.acceptTrade(s, cfg, p3.trade.id, 'narae').ok && p3.trade.status === 'expired');
   // 새로고침/재접속: 상태를 직렬화했다가 복원

@@ -12,6 +12,7 @@
     chances: 4,            // 국가별 생산 기회
     strongLevel: 5,        // 이 값 이상이면 '매우 강한' 조건
     weakShare: 0.25,       // 약한 조건일 때 1회 생산량 = 목표량 × 0.25
+    tradeShare: 0.5,       // 한 번 거래할 때 주고받는 양 = 목표량 × 0.5 (고정)
     conditions: [
       { id: 'capital',  name: '자본',   desc: '공장·기계·생산 시설을 마련하는 힘' },
       { id: 'resource', name: '자원',   desc: '땅속·자연에서 얻는 자원의 풍부함' },
@@ -19,11 +20,12 @@
       { id: 'tech',     name: '기술력', desc: '물건을 효율적으로 만드는 기술 수준' }
     ],
     // key: 이 물품을 만들 때 가장 중요한 생산 조건
+    // target: 한 나라 국민이 1년 동안 쓰는 양 (실제 우리나라 1년 소비 규모에 가깝게)
     items: [
-      { id: 'rice',  name: '쌀',     unit: 'kg', target: 20, key: 'labor'    },
-      { id: 'oil',   name: '석유',   unit: 'L',  target: 20, key: 'resource' },
-      { id: 'car',   name: '자동차', unit: '대', target: 12, key: 'capital'  },
-      { id: 'phone', name: '스마트폰', unit: '대', target: 16, key: 'tech'     }
+      { id: 'rice',  name: '쌀',     unit: '만 톤',   target: 400,  key: 'labor'    },
+      { id: 'oil',   name: '석유',   unit: '억 배럴', target: 8,    key: 'resource' },
+      { id: 'car',   name: '자동차', unit: '만 대',   target: 160,  key: 'capital'  },
+      { id: 'phone', name: '스마트폰', unit: '만 대', target: 1600, key: 'tech'     }
     ],
     countries: [
       { id: 'gaon', name: '가온국', color: '#2f6fdb', flag: 'stripes',  stats: { capital: 2, resource: 3, labor: 5, tech: 1 } },
@@ -66,6 +68,14 @@
       cfg.items.forEach((it) => { t[c.id][it.id] = output(cfg, c.id, it.id); });
     });
     return t;
+  }
+  // 한 번 거래할 때 주고받는 양 (학생이 바꿀 수 없음)
+  function tradeUnit(cfg, itemId) {
+    const it = itemById(cfg, itemId);
+    return Math.max(1, Math.round(it.target * (cfg.tradeShare || 0.5)));
+  }
+  function tradeUnits(cfg) {
+    const u = {}; cfg.items.forEach((it) => { u[it.id] = tradeUnit(cfg, it.id); }); return u;
   }
   // 교사용: 1회 생산량이 목표량에 도달하는 물품(특화 물품)
   function specialties(cfg, countryId) {
@@ -160,16 +170,17 @@
     return null;
   }
   function validOffer(cfg, o) {
-    return o && itemById(cfg, o.item) && Number.isInteger(o.qty) && o.qty > 0;
+    return o && itemById(cfg, o.item) && o.qty === tradeUnit(cfg, o.item);
   }
 
   function proposeTrade(s, cfg, from, to, give, get, opId) {
     if (seen(s, opId)) return fail('이미 처리된 요청이에요.');
     const why = canTrade(s); if (why) return fail(why);
     if (!s.countries[from] || !s.countries[to] || from === to) return fail('거래할 나라를 다시 골라 주세요.');
-    if (!validOffer(cfg, give) || !validOffer(cfg, get)) return fail('보낼 물품과 받을 물품, 수량을 모두 정해 주세요.');
+    if (!validOffer(cfg, give) || !validOffer(cfg, get)) return fail('보낼 물품과 받을 물품을 정해 주세요. 거래량은 정해진 양만 쓸 수 있어요.');
     if (give.item === get.item) return fail('같은 물품끼리는 교환할 수 없어요.');
     if (s.countries[from].inv[give.item] < give.qty) return fail('우리 창고에 그만큼의 물품이 없어요.');
+    if (s.trades.some((x) => x.status === 'pending' && x.from === from && x.to === to)) return fail('이 나라에 보낸 요청이 아직 기다리는 중이에요. 상대가 수락하거나 요청을 취소한 뒤 다시 보내 주세요.');
     const t = { id: nextId(s, 't'), from, to, give: clone(give), get: clone(get), status: 'pending' };
     s.trades.push(t);
     return okr({ trade: t });
@@ -190,10 +201,11 @@
     t.status = 'done';
     return okr({ trade: t });
   }
+  // 받은 나라는 거절할 수 없음. 보낸 나라의 요청 취소와 교사의 무효 처리만 가능
   function rejectTrade(s, tradeId, by) {
     const t = s.trades.find((x) => x.id === tradeId);
     if (!t || t.status !== 'pending') return fail('이미 끝난 거래예요.');
-    if (by !== t.to && by !== t.from && by !== 'teacher') return fail('권한이 없어요.');
+    if (by !== t.from && by !== 'teacher') return fail('받은 요청은 거절할 수 없어요. 수락만 할 수 있어요.');
     t.status = by === t.from ? 'withdrawn' : 'rejected';
     return okr();
   }
@@ -304,13 +316,17 @@
     const ids = cfg.countries.map((c) => c.id);
     for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) {
       const a = ids[i], b = ids[j];
-      const give = { item: spec[a], qty: itemById(cfg, spec[a]).target };
-      const get = { item: spec[b], qty: itemById(cfg, spec[b]).target };
-      const p = proposeTrade(s, cfg, a, b, give, get);
-      const r = p.ok ? acceptTrade(s, cfg, p.trade.id, b) : p;
-      log.push({ a, b, give, get, ok: r.ok, error: r.error });
-      const now = totals(s, cfg);
-      cfg.items.forEach((it) => { if (now[it.id] !== before[it.id]) conserved = false; });
+      const give = { item: spec[a], qty: tradeUnit(cfg, spec[a]) };
+      const get = { item: spec[b], qty: tradeUnit(cfg, spec[b]) };
+      // 목표량을 채울 때까지 같은 거래를 반복 (거래량은 고정)
+      const reps = Math.ceil(itemById(cfg, spec[a]).target / give.qty);
+      for (let k = 0; k < reps; k++) {
+        const p = proposeTrade(s, cfg, a, b, give, get);
+        const r = p.ok ? acceptTrade(s, cfg, p.trade.id, b) : p;
+        log.push({ a, b, give, get, ok: r.ok, error: r.error });
+        const now = totals(s, cfg);
+        cfg.items.forEach((it) => { if (now[it.id] !== before[it.id]) conserved = false; });
+      }
     }
     const final = {};
     ids.forEach((id) => { final[id] = security(cfg, s.countries[id].inv).overall; });
@@ -320,7 +336,7 @@
 
   root.TradeLogic = {
     DEFAULT_CONFIG, STAGES, clone, itemById, countryById, roundOf,
-    output, outputTable, specialties, security, fmtPct,
+    output, outputTable, specialties, tradeUnit, tradeUnits, security, fmtPct,
     createState, produce, undoProduce, canProduce, canTrade,
     proposeTrade, acceptTrade, rejectTrade, revertTrade, setStage,
     tradeSummary, productionCounts, totals, verifyAutarky, verifyTradePlan, emptyInv

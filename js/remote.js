@@ -56,7 +56,7 @@ export async function createRoom(fs, db, uid, cfg) {
   if (!code) throw new Error('입장 코드를 만들지 못했어요. 다시 시도해 주세요.');
   const R = roomRefs(fs, db, code);
   await fs.setDoc(R.room, { ownerUid: uid, createdAt: fs.serverTimestamp(), stage: 1,
-    locks: { production: false, trade: false }, allowUndo: true, cfg, outputs: L.outputTable(cfg), round1: null });
+    locks: { production: false, trade: false }, allowUndo: true, cfg, outputs: L.outputTable(cfg), units: L.tradeUnits(cfg), round1: null });
   const b = fs.writeBatch(db);
   cfg.countries.forEach((c) => b.set(R.country(c.id), freshCountry(cfg)));
   await b.commit();
@@ -286,7 +286,7 @@ export function createRemoteBackend({ fs, db, code, uid, onChange, watchSeats })
     },
     async setConfig(nc) {
       nc = clean(nc);
-      await fs.updateDoc(R.room, { cfg: nc, outputs: L.outputTable(nc) });
+      await fs.updateDoc(R.room, { cfg: nc, outputs: L.outputTable(nc), units: L.tradeUnits(nc) });
       return { ok: true };
     }
   };

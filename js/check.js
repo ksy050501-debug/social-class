@@ -9,7 +9,8 @@ const main = el('main');
 const cfg = L.clone(L.DEFAULT_CONFIG);
 const IDS = cfg.countries.map((c) => c.id);
 const SPEC = { gaon: 'rice', narae: 'oil', daon: 'car', raon: 'phone' };
-const QTY = { rice: 20, oil: 20, car: 12, phone: 16 };
+const U = L.tradeUnits(cfg);   // 고정 거래량: 쌀 200만 톤, 석유 4억 배럴, 자동차 80만 대, 스마트폰 800만 대
+const deal = (a, b) => [{ item: SPEC[a], qty: U[SPEC[a]] }, { item: SPEC[b], qty: U[SPEC[b]] }];
 let teacher = null;
 
 function page(body) { main.innerHTML = `<div class="gate" style="max-width:760px"><section class="panel"><h2>수업 전 점검</h2>${body}</section></div>`; }
@@ -99,50 +100,58 @@ async function start() {
     await expectOk('교사: 6단계(무역)', TB.setStage(6));
 
     const total0 = L.totals({ countries: Object.fromEntries(await Promise.all(IDS.map(async (id) => [id, await inv(id)]))) }, cfg);
-    const p1 = await B.gaon.propose('gaon', 'narae', { item: 'rice', qty: 20 }, { item: 'oil', qty: 20 });
-    log(!!(p1 && p1.ok), '가온국: 나래국에 쌀 20kg ↔ 석유 20L 제안');
-    await expectDenied('제안을 받지 않은 나라(다온국)는 대신 수락할 수 없음', fs.runTransaction(st.daon.ctx.db, async (t) => {
+    const p1 = await B.gaon.propose('gaon', 'narae', ...deal('gaon', 'narae'));
+    log(!!(p1 && p1.ok), `가온국: 나래국에 쌀 ${U.rice}만 톤 ↔ 석유 ${U.oil}억 배럴 거래 요청`);
+    await expectDenied('정해진 거래량을 바꾼 요청은 만들 수 없음', fs.setDoc(fs.doc(R('daon').trades), { from: 'daon', to: 'raon', give: { item: 'car', qty: U.car * 3 }, get: { item: 'phone', qty: U.phone }, status: 'pending', createdAt: fs.serverTimestamp(), by: st.daon.uid }));
+    await expectDenied('요청을 받은 나라(나래국)는 거절할 수 없음', fs.updateDoc(R('narae').trade(p1.id), { status: 'rejected' }));
+    await expectDenied('요청을 받지 않은 나라(다온국)는 대신 수락할 수 없음', fs.runTransaction(st.daon.ctx.db, async (t) => {
       const a = await t.get(R('daon').country('gaon')), b = await t.get(R('daon').country('narae'));
+      const ai = a.data().inv, bi = b.data().inv;
       t.update(R('daon').trade(p1.id), { status: 'done' });
-      t.update(R('daon').country('gaon'), { inv: Object.assign({}, a.data().inv, { rice: 60, oil: 20 }), op: { kind: 'trade', tid: p1.id } });
-      t.update(R('daon').country('narae'), { inv: Object.assign({}, b.data().inv, { rice: 20, oil: 60 }), op: { kind: 'trade', tid: p1.id } });
+      t.update(R('daon').country('gaon'), { inv: Object.assign({}, ai, { rice: ai.rice - U.rice, oil: ai.oil + U.oil }), op: { kind: 'trade', tid: p1.id } });
+      t.update(R('daon').country('narae'), { inv: Object.assign({}, bi, { rice: bi.rice + U.rice, oil: bi.oil - U.oil }), op: { kind: 'trade', tid: p1.id } });
     }));
     await expectDenied('수량을 바꿔서 수락할 수 없음', fs.runTransaction(st.narae.ctx.db, async (t) => {
       const a = await t.get(R('narae').country('gaon')), b = await t.get(R('narae').country('narae'));
+      const ai = a.data().inv, bi = b.data().inv;
       t.update(R('narae').trade(p1.id), { status: 'done' });
-      t.update(R('narae').country('gaon'), { inv: Object.assign({}, a.data().inv, { rice: 60, oil: 5 }), op: { kind: 'trade', tid: p1.id } });
-      t.update(R('narae').country('narae'), { inv: Object.assign({}, b.data().inv, { rice: 20, oil: 75 }), op: { kind: 'trade', tid: p1.id } });
+      t.update(R('narae').country('gaon'), { inv: Object.assign({}, ai, { rice: ai.rice - U.rice, oil: ai.oil + 1 }), op: { kind: 'trade', tid: p1.id } });
+      t.update(R('narae').country('narae'), { inv: Object.assign({}, bi, { rice: bi.rice + U.rice, oil: bi.oil - 1 }), op: { kind: 'trade', tid: p1.id } });
     }));
-    await expectOk('나래국: 제안 수락', B.narae.accept('narae', p1.id));
+    await expectOk('나래국: 요청 수락', B.narae.accept('narae', p1.id));
     await expectFail('이미 성립한 거래를 다시 수락해도 반영되지 않음', B.narae.accept('narae', p1.id));
 
-    const pa = await B.gaon.propose('gaon', 'daon', { item: 'rice', qty: 40 }, { item: 'car', qty: 12 });
-    const pb = await B.gaon.propose('gaon', 'raon', { item: 'rice', qty: 40 }, { item: 'phone', qty: 16 });
+    // 동시 수락 경쟁: 교사가 가온국 쌀을 거래 한 번 분량만 남겨 둔 뒤 두 나라에 동시에 요청
+    const gBefore = await inv('gaon');
+    await fs.updateDoc(roomRefs(fs, T.ctx.db, code).country('gaon'), { inv: Object.assign({}, gBefore.inv, { rice: U.rice }), op: { kind: 'teacher-test' } });
+    const pa = await B.gaon.propose('gaon', 'daon', ...deal('gaon', 'daon'));
+    const pb = await B.gaon.propose('gaon', 'raon', ...deal('gaon', 'raon'));
     const both = await Promise.all([B.daon.accept('daon', pa.id).catch((e) => ({ ok: false, error: e.code })), B.raon.accept('raon', pb.id).catch((e) => ({ ok: false, error: e.code }))]);
     const g3 = await inv('gaon');
-    log(both.filter((r) => r.ok).length === 1 && g3.inv.rice === 20, '같은 쌀로 만든 두 제안을 동시에 수락하면 하나만 성립', `가온국 쌀 ${g3.inv.rice}kg`);
+    log(both.filter((r) => r.ok).length === 1 && g3.inv.rice === 0, '같은 쌀로 만든 두 요청을 동시에 수락하면 하나만 성립', `가온국 쌀 ${g3.inv.rice}만 톤`);
     const doneId = both[0].ok ? pa.id : pb.id;
     await expectOk('교사: 성립한 거래 취소(되돌리기)', TB.revert(doneId));
     const g4 = await inv('gaon');
-    log(g4.inv.rice === 60, '거래 취소 후 가온국 쌀이 60kg으로 돌아옴');
-    const pend = [pa.id, pb.id].filter((x) => x !== doneId);
-    for (const x of pend) await TB.cancelTrade(x).catch(() => {});
+    log(g4.inv.rice === U.rice, `거래 취소 후 가온국 쌀이 ${U.rice}만 톤으로 돌아옴`);
+    for (const x of [pa.id, pb.id].filter((x) => x !== doneId)) await TB.cancelTrade(x).catch(() => {});
+    await fs.updateDoc(roomRefs(fs, T.ctx.db, code).country('gaon'), { inv: gBefore.inv, op: { kind: 'teacher-test' } });
 
-    const pairs = [['gaon', 'daon'], ['gaon', 'raon'], ['narae', 'daon'], ['narae', 'raon'], ['daon', 'raon']];
-    for (const [a, b] of pairs) {
-      const p = await B[a].propose(a, b, { item: SPEC[a], qty: QTY[SPEC[a]] }, { item: SPEC[b], qty: QTY[SPEC[b]] });
-      if (!p || !p.ok) { log(false, `${a}→${b} 제안`, p && p.error); continue; }
+    // 남은 거래로 네 나라 모두 100%: 나라 쌍마다 목표량의 절반씩 두 번 (가온-나래는 한 번 남음)
+    const pairs = [['gaon', 'narae', 1], ['gaon', 'daon', 2], ['gaon', 'raon', 2], ['narae', 'daon', 2], ['narae', 'raon', 2], ['daon', 'raon', 2]];
+    for (const [a, b, n] of pairs) for (let k = 0; k < n; k++) {
+      const p = await B[a].propose(a, b, ...deal(a, b));
+      if (!p || !p.ok) { log(false, `${a}→${b} 요청`, p && p.error); continue; }
       const r = await B[b].accept(b, p.id);
       if (!r || !r.ok) log(false, `${a}↔${b} 거래`, r && r.error);
     }
     const fin = {}; for (const id of IDS) fin[id] = await inv(id);
     const total1 = L.totals({ countries: fin }, cfg);
-    log(cfg.items.every((it) => total0[it.id] === total1[it.id]), '거래 전후 전체 물품 합계가 같음', cfg.items.map((it) => `${it.name} ${total1[it.id]}`).join(', '));
+    log(cfg.items.every((it) => total0[it.id] === total1[it.id]), '거래 전후 전체 물품 합계가 같음', cfg.items.map((it) => `${it.name} ${total1[it.id]}${it.unit}`).join(', '));
     const pc = IDS.map((id) => L.security(cfg, fin[id].inv).overall);
     log(pc.every((v) => v === 100), '네 나라 모두 국민 생활 물품 확보율 100%', IDS.map((id, i) => `${L.countryById(cfg, id).name} ${L.fmtPct(pc[i])}`).join(', '));
 
     await expectOk('교사: 7단계(결과 비교)', TB.setStage(7));
-    const late = await B.gaon.propose('gaon', 'narae', { item: 'rice', qty: 1 }, { item: 'oil', qty: 1 });
+    const late = await B.gaon.propose('gaon', 'narae', ...deal('gaon', 'narae'));
     log(!!late && late.ok === false, '무역 단계가 끝나면 거래 제안이 막힘');
 
     TB.stop(); IDS.forEach((id) => B[id].stop());

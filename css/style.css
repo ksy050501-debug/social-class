@@ -233,3 +233,41 @@ html,body{margin:0}
 .checklist{display:grid;gap:6px;font-size:15px}
 .checklist .ok{color:var(--good);font-weight:600}
 .checklist .no{color:var(--warn);font-weight:600}
+
+/* 무역의 바다 */
+.sea{position:relative;width:100%;aspect-ratio:16/10;border-radius:14px;overflow:hidden;box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--ink) 12%,transparent);user-select:none;-webkit-user-select:none;touch-action:none;background:#2f7ea6}
+.sea-bg{position:absolute;inset:0;width:100%;height:100%;display:block}
+.isle{position:absolute;transform:translate(-50%,-50%);background:color-mix(in srgb,#fffaf0 90%,transparent);color:#14202c;border:2px solid var(--nc);border-radius:10px;padding:5px 7px;font-size:12px;line-height:1.3;min-width:116px;box-shadow:0 2px 6px rgba(0,0,0,.18);pointer-events:none}
+.isle.me{box-shadow:0 0 0 3px color-mix(in srgb,var(--nc) 35%,transparent),0 2px 6px rgba(0,0,0,.18)}
+.isle-hd{display:flex;align-items:center;gap:5px;margin-bottom:3px;font-size:13px}
+.isle-hd .me-tag{margin-left:auto;font-size:10px;font-weight:700;background:var(--nc);color:#fff;border-radius:4px;padding:0 5px}
+.isle-inv{display:grid;gap:1px}
+.isle-inv>span{display:flex;align-items:center;gap:4px;white-space:nowrap}
+.isle-inv .num{font-weight:700}
+.isle-inv small{color:#566676;font-size:10px}
+.ship{position:absolute;width:6.4%;aspect-ratio:64/40;transform:translate(-50%,-50%);pointer-events:none;z-index:3;filter:drop-shadow(0 3px 2px rgba(0,0,0,.3))}
+.ship .boat{width:100%;height:100%;animation:bob 2.4s ease-in-out infinite;transform-origin:50% 60%}
+.ship.moving .boat{animation:none}
+.ship::after{content:"";position:absolute;left:50%;top:100%;width:70%;height:14%;transform:translate(-50%,-30%);border-radius:50%;background:rgba(255,255,255,.35);z-index:-1}
+@keyframes bob{0%,100%{translate:0 0}50%{translate:0 -6%}}
+.sea-banner{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);background:rgba(20,32,44,.82);color:#fff;padding:6px 14px;border-radius:999px;font-size:14px;white-space:nowrap;display:flex;align-items:center;gap:6px;z-index:4}
+.sea-banner.arrive{background:var(--nc);box-shadow:0 0 0 3px rgba(255,255,255,.6);animation:pop .4s ease-out}
+@keyframes pop{0%{transform:translateX(-50%) scale(.85)}100%{transform:translateX(-50%) scale(1)}}
+.sea-ctrl{display:flex;gap:16px;align-items:center;margin-top:12px;flex-wrap:wrap}
+.sea-ctrl p{flex:1;min-width:220px;font-size:14px}
+.dpad{display:grid;grid-template-columns:repeat(3,56px);grid-template-rows:repeat(3,56px);gap:4px}
+.dpad button{border:0;border-radius:12px;background:var(--ink);color:var(--bg);font-size:22px;cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none}
+.dpad button:active{background:var(--accent)}
+.dpad [data-dir=up]{grid-column:2;grid-row:1}.dpad [data-dir=left]{grid-column:1;grid-row:2}.dpad [data-dir=right]{grid-column:3;grid-row:2}.dpad [data-dir=down]{grid-column:2;grid-row:3}
+.port{border-top:5px solid var(--nc)}
+.port h2{display:flex;align-items:center;gap:8px}
+.opts{display:grid;gap:8px;grid-template-columns:repeat(2,minmax(0,1fr))}
+.opt{display:flex;gap:10px;align-items:center;text-align:left;border:1.5px solid var(--line);background:var(--surface);border-radius:10px;padding:8px 10px;cursor:pointer;min-height:52px}
+.opt span{display:grid}.opt small{color:var(--muted);font-size:12px}
+.opt.on{border-color:var(--accent);box-shadow:inset 0 0 0 1.5px var(--accent);background:color-mix(in srgb,var(--accent) 8%,var(--surface))}
+.opt:disabled{opacity:.4;cursor:not-allowed}
+.letter{background:color-mix(in srgb,#f6ecd2 70%,var(--surface));border:1px solid color-mix(in srgb,#b08a3a 40%,var(--line));border-radius:10px;padding:12px 14px;display:grid;gap:8px}
+.letter p{margin:0;font-size:16px}
+.letter.incoming{border-left:5px solid var(--nc)}
+.badge{display:inline-grid;place-items:center;min-width:24px;height:24px;border-radius:999px;background:var(--warn);color:#fff;font-size:14px;padding:0 6px;vertical-align:middle}
+@media (max-width:700px){.isle{min-width:0;font-size:10px;padding:3px 5px}.isle-hd{font-size:11px}.isle-inv small{display:none}.dpad{grid-template-columns:repeat(3,48px);grid-template-rows:repeat(3,48px)}}

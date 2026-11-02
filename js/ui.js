@@ -35,7 +35,7 @@ function flag(c,w){
 
 /* ---------- 도우미 ---------- */
 const C=(id)=>L.countryById(cfg,id), I=(id)=>L.itemById(cfg,id);
-const q=(n,id)=>`${n}${esc(I(id).unit)}`;
+const q=(n,id)=>`${Number(n||0).toLocaleString('ko-KR')}${esc(I(id).unit)}`;
 const pct=L.fmtPct;
 const round=()=>L.roundOf(S.stage);
 const bar=(key,p,color,tall)=>`<div class="bar${tall?' tall':''}${p>=100?' full':''}" role="img" aria-label="${pct(p)}"><i data-k="${key}" data-w="${p}" style="width:${p}%;--c:${color}"></i></div>`;
@@ -68,7 +68,7 @@ const STUDENT_GUIDE={
  3:'1차 실험 결과를 보고 학습지에 분석해 보세요.',
  4:'다른 나라와 물품을 교환할 수 있다면, 어떤 상품을 생산하는 것이 좋을까요?',
  5:'모둠이 세운 계획대로 생산하세요. 창고는 비었고 생산 기회는 다시 4번이에요.',
- 6:'다른 모둠과 직접 이야기해서 교환할 물품과 수량을 정한 뒤, 여기에 거래를 기록하세요.',
+ 6:'배를 몰아 다른 나라 항구로 가서 거래를 요청하세요. 우리에게 온 요청은 거래 요청함에서 수락할 수 있어요.',
  7:'1차와 2차 결과를 비교하고 학습지에 답해 보세요.',
  8:'무역이 필요한 까닭을 학습지에 자기 말로 정리해 보세요.'
 };
@@ -78,7 +78,7 @@ const TEACHER_GUIDE={
  3:['결과 분석 5분','개인 학습지에 실패 원인과 유리·불리한 물품을 적고, 생산량 표를 근거로 모둠에서 이야기합니다.','“왜 모든 물품을 100% 확보하지 못했을까요?” “우리나라가 생산에 유리한 물품과 불리한 물품은?”'],
  4:['2차 탐구 (계획)','이 단계로 넘어오면서 1차 결과가 저장되고 모든 창고와 생산 기회가 초기화되었습니다. 학생은 개인 학습지에 생산 계획을 적은 뒤 모둠 계획을 정합니다.','“다른 나라와 물품을 교환할 수 있다면, 어떤 상품을 생산하는 것이 좋을까요?”'],
  5:['2차 탐구 (생산)','모둠 계획대로 생산합니다. 생산은 다음 무역 단계에서도 남은 기회만큼 계속할 수 있습니다.','“우리 계획대로 생산했을 때 창고는 어떻게 달라졌나요?”'],
- 6:['2차 탐구 (무역)','모둠끼리 직접 협상하고, 합의한 내용만 화면에 기록합니다. 받은 나라가 수락해야 성립합니다.','“무엇을 수출하고 무엇을 수입하나요?”'],
+ 6:['2차 탐구 (무역)','학생은 무역의 바다에서 배를 몰아 다른 나라 항구에 도착한 뒤, 정해진 양으로 거래를 요청합니다. 요청은 상대 나라의 거래 요청함으로 가고, 받은 나라는 수락만 할 수 있습니다(거절 없음).','“어느 나라 항구로 가야 할까요? 무엇을 수출하고 무엇을 수입하나요?”'],
  7:['비교 및 일반화 8분','발표 화면으로 1차·2차 결과를 함께 봅니다. 모든 나라가 함께 나아진 점에 주목하게 합니다.','“1차와 2차는 무엇이 달랐나요?” “다른 나라도 우리와 무역하려 한 까닭은?”'],
  8:['정리 4분','무역의 필요성을 자기 말로 정리하고, 이 게임이 실제 경제를 단순화한 모형임을 안내합니다.','“나라마다 생산에 유리한 조건이 다른데…” 문장을 학생 말로 완성하게 합니다.']
 };
@@ -147,37 +147,136 @@ function dealText(t,me){
   return `<div class="lines"><div class="row"><span class="tag ex">수출</span>${itemIcon(meGives.item,22)}<b>${esc(I(meGives.item).name)} <span class="num">${q(meGives.qty,meGives.item)}</span></b><span class="muted">→ ${esc(other.name)}에 보냄</span></div>
     <div class="row"><span class="tag im">수입</span>${itemIcon(meGets.item,22)}<b>${esc(I(meGets.item).name)} <span class="num">${q(meGets.qty,meGets.item)}</span></b><span class="muted">← ${esc(other.name)}에서 받음</span></div></div>`;
 }
-function tradePanel(cid){
-  const others=cfg.countries.filter(c=>c.id!==cid);
-  const inv0=cst(cid).inv;const most=cfg.items.slice().sort((a,b)=>(inv0[b.id]||0)/b.target-(inv0[a.id]||0)/a.target)[0].id;
-  const lack=cfg.items.filter(it=>it.id!==most).sort((a,b)=>(inv0[a.id]||0)/a.target-(inv0[b.id]||0)/b.target)[0].id;
-  const d=ui.draft[cid]||(ui.draft[cid]={to:others[0].id,give:most,giveQty:1,get:lack,getQty:1});
-  const blocked=L.canTrade(S);const st=cst(cid);
-  const to=C(d.to);
-  const seg=(kind)=>cfg.items.map(it=>`<button data-a="d-item" data-c="${cid}" data-k="${kind}" data-i="${it.id}" aria-pressed="${d[kind]===it.id}">${itemIcon(it.id,24)}${esc(it.name)}${kind==='give'?` <span class="num muted" style="font-size:12px">${q(st.inv[it.id]||0,it.id)}</span>`:''}</button>`).join('');
-  const step=(kind)=>`<div class="stepper"><button data-a="d-step" data-c="${cid}" data-k="${kind}" data-d="-1" aria-label="1 줄이기">−</button><input id="qty-${cid}-${kind}" type="number" inputmode="numeric" min="1" value="${d[kind+'Qty']}" data-a="d-qty" data-c="${cid}" data-k="${kind}" aria-label="수량"><button data-a="d-step" data-c="${cid}" data-k="${kind}" data-d="1" aria-label="1 늘리기">+</button><span class="muted">${esc(I(d[kind]).unit)}</span></div>`;
-  const pend=S.trades.filter(t=>t.status==='pending'&&(t.to===cid||t.from===cid));
-  const done=S.trades.filter(t=>t.status==='done'&&(t.to===cid||t.from===cid));
-  const short=(st.inv[d.give]||0)<d.giveQty;
-  const busyP=!!ui.busy['tp-'+cid];
-  return `<section class="panel"><h2>무역 · 물품 맞교환</h2>
-   ${blocked?`<p class="callout">${esc(blocked)}</p>`:''}
-   <div class="summary" style="margin-bottom:14px"><div class="label" style="margin-bottom:4px">우리나라 창고</div>${invMini(cid)}</div>
-   <div class="grid2"><div style="display:grid;gap:12px;min-width:0">
-     <div><div class="label" style="margin-bottom:6px">① 거래할 나라</div><div class="seg">${others.map(o=>`<button data-a="d-to" data-c="${cid}" data-v="${o.id}" aria-pressed="${d.to===o.id}">${flag(o,26)}${esc(o.name)}</button>`).join('')}</div></div>
-     <div class="dir out"><div class="row"><span class="tag ex">수출</span><b>② 우리가 보낼 물품</b></div><div class="seg">${seg('give')}</div>${step('give')}${short?`<div style="color:var(--warn);font-size:14px;font-weight:600">우리 창고에 ${esc(I(d.give).name)}이(가) ${q(st.inv[d.give]||0,d.give)}밖에 없어요.</div>`:''}</div>
-     <div class="dir in"><div class="row"><span class="tag im">수입</span><b>③ ${esc(to.name)}에서 받을 물품</b></div><div class="seg">${seg('get')}</div>${step('get')}</div>
-     <div class="summary">우리 <b>${esc(I(d.give).name)} ${q(d.giveQty,d.give)}</b>를 ${esc(to.name)}에 보내고, ${esc(to.name)}의 <b>${esc(I(d.get).name)} ${q(d.getQty,d.get)}</b>를 받아요.</div>
-     <button class="btn accent" data-a="propose" data-c="${cid}" ${blocked||short||d.give===d.get||busyP?'disabled':''}>④ 거래 제안하기</button>
-     ${d.give===d.get?'<div class="muted" style="font-size:14px">같은 물품끼리는 교환할 수 없어요.</div>':''}
-   </div>
-   <div style="display:grid;gap:12px;align-content:start;min-width:0">
-     <h3>도착한 제안과 보낸 제안</h3>
-     ${pend.length?pend.map(t=>{const inc=t.to===cid;const o=C(inc?t.from:t.to);const b=!!ui.busy['t-'+t.id];return `<div class="deal ${inc?'incoming':''}"><div class="row"><span class="tag pend">${inc?'받은 제안':'보낸 제안 · 기다리는 중'}</span>${flag(o,22)}<b>${esc(o.name)}</b></div>${dealText(t,cid)}
-       <div class="row">${inc?`<button class="btn good small" data-a="accept" data-c="${cid}" data-t="${t.id}" ${blocked||b?'disabled':''}>수락하기</button><button class="btn ghost small" data-a="reject" data-c="${cid}" data-t="${t.id}" ${b?'disabled':''}>거절</button>`:`<button class="btn ghost small" data-a="reject" data-c="${cid}" data-t="${t.id}" ${b?'disabled':''}>제안 취소</button>`}</div></div>`}).join(''):'<p class="muted" style="margin:0">아직 없어요.</p>'}
-     <h3 style="margin-top:6px">성립한 거래</h3>
-     ${done.length?done.slice().reverse().map(t=>{const o=C(t.from===cid?t.to:t.from);return `<div class="deal"><div class="row">${flag(o,22)}<b>${esc(o.name)}</b><span class="tag" style="background:var(--good-bg);color:var(--good)">성립</span></div>${dealText(t,cid)}</div>`}).join(''):'<p class="muted" style="margin:0">아직 없어요.</p>'}
-   </div></div></section>`;
+/* ---------- 무역의 바다: 배를 몰아 다른 나라 항구로 가서 거래 요청 ---------- */
+const SEA={W:1000,H:625,
+  isl:[[170,150],[830,150],[830,475],[170,475]],      // 나라 순서대로 섬 중심
+  port:[[292,218],[708,218],[708,407],[292,407]],     // 섬마다 바다 쪽 항구
+  rocks:[[500,312,64],[500,92,34],[500,533,34],[360,312,24],[640,312,24]],
+  islR:118,shipR:16,dockR:54,speed:230};
+const seaKeys={up:false,down:false,left:false,right:false};
+const fmtN=(n)=>Number(n||0).toLocaleString('ko-KR');
+const seaIdx=(id)=>cfg.countries.findIndex(c=>c.id===id);
+function shipOf(cid){
+  ui.ship=ui.ship||{};let s=ui.ship[cid];
+  if(!s){const p=SEA.port[seaIdx(cid)]||[500,312];s=ui.ship[cid]={x:p[0],y:p[1],a:seaIdx(cid)%3===0?0:180,dock:cid}}
+  return s;
+}
+function seaBlocked(x,y){
+  const r=SEA.shipR;
+  if(x<r||y<r||x>SEA.W-r||y>SEA.H-r)return true;
+  for(const [cx,cy] of SEA.isl)if(Math.hypot(x-cx,y-cy)<SEA.islR+r-6)return true;
+  for(const [cx,cy,rr] of SEA.rocks)if(Math.hypot(x-cx,y-cy)<rr+r)return true;
+  return false;
+}
+function dockAt(s){
+  let best=null,bd=SEA.dockR;
+  cfg.countries.forEach((c,i)=>{const p=SEA.port[i];if(!p)return;const d=Math.hypot(s.x-p[0],s.y-p[1]);if(d<bd){bd=d;best=c.id}});
+  return best;
+}
+function placeShip(el,s){
+  el.style.left=(s.x/SEA.W*100)+'%';el.style.top=(s.y/SEA.H*100)+'%';
+  const flip=Math.abs(s.a)>90?-1:1;const b=el.firstElementChild;if(b)b.style.transform=`rotate(${s.a}deg) scaleY(${flip})`;
+}
+let seaLast=0;
+function seaTick(ts){
+  requestAnimationFrame(seaTick);
+  const dt=Math.min(.05,(ts-(seaLast||ts))/1000);seaLast=ts;
+  const el=document.getElementById('ship');if(!el||!S||!cfg)return;
+  let vx=(seaKeys.right?1:0)-(seaKeys.left?1:0),vy=(seaKeys.down?1:0)-(seaKeys.up?1:0);
+  if(!vx&&!vy){el.classList.remove('moving');return}
+  const s=shipOf(el.dataset.c);const n=Math.hypot(vx,vy);vx/=n;vy/=n;
+  const d=SEA.speed*dt,nx=s.x+vx*d,ny=s.y+vy*d;
+  if(!seaBlocked(nx,s.y))s.x=nx;
+  if(!seaBlocked(s.x,ny))s.y=ny;
+  s.a=Math.atan2(vy,vx)*180/Math.PI;
+  placeShip(el,s);el.classList.add('moving');
+  const dk=dockAt(s);if(dk!==s.dock){s.dock=dk;render(true);
+    if(dk&&dk!==el.dataset.c){const pt=document.querySelector('.port');if(pt&&pt.getBoundingClientRect().top>window.innerHeight-120)pt.scrollIntoView({behavior:'smooth',block:'start'})}}
+}
+if(typeof requestAnimationFrame==='function')requestAnimationFrame(seaTick);
+const SEA_KEY={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',w:'up',s:'down',a:'left',d:'right',W:'up',S:'down',A:'left',D:'right'};
+document.addEventListener('keydown',(e)=>{const k=SEA_KEY[e.key];if(!k||!document.getElementById('sea')||ui.modal)return;if(e.target.closest&&e.target.closest('input,textarea,select'))return;seaKeys[k]=true;e.preventDefault()});
+document.addEventListener('keyup',(e)=>{const k=SEA_KEY[e.key];if(k)seaKeys[k]=false});
+const seaStop=()=>{Object.keys(seaKeys).forEach(k=>{seaKeys[k]=false})};
+window.addEventListener('blur',seaStop);
+document.addEventListener('pointerdown',(e)=>{const b=e.target.closest('[data-dir]');if(!b)return;e.preventDefault();seaKeys[b.dataset.dir]=true;try{b.setPointerCapture(e.pointerId)}catch(err){}});
+['pointerup','pointercancel'].forEach(t=>document.addEventListener(t,(e)=>{if(e.target.closest&&e.target.closest('[data-dir]'))seaKeys[e.target.closest('[data-dir]').dataset.dir]=false;else if(e.pointerType!=='mouse'||e.buttons===0)seaStop()}));
+document.addEventListener('contextmenu',(e)=>{if(e.target.closest('[data-dir]'))e.preventDefault()});
+
+const BOAT=(c)=>`<svg viewBox="0 0 64 40" width="100%" height="100%" aria-hidden="true"><path d="M4 22h50l-8 13H12z" fill="#5a3b22"/><path d="M4 22h50l-2 3H6z" fill="#7a5130"/><rect x="29" y="2" width="3" height="21" fill="#3b2a1a"/><path d="M32 4l20 15H32z" fill="${c}"/><path d="M29 6L13 20h16z" fill="#f4efe2"/><circle cx="20" cy="28" r="2" fill="#f4efe2" opacity=".8"/><circle cx="30" cy="28" r="2" fill="#f4efe2" opacity=".8"/><circle cx="40" cy="28" r="2" fill="#f4efe2" opacity=".8"/></svg>`;
+function seaSVG(cid){
+  const isl=cfg.countries.map((c,i)=>{const [x,y]=SEA.isl[i];const [px,py]=SEA.port[i];const me=c.id===cid;
+    const ang=Math.atan2(py-y,px-x),ex=x+Math.cos(ang)*(SEA.islR-8),ey=y+Math.sin(ang)*(SEA.islR-8);
+    return `<g><ellipse cx="${x}" cy="${y+6}" rx="${SEA.islR+16}" ry="${SEA.islR+8}" fill="#cfe6ee" opacity=".55"/>
+      <ellipse cx="${x}" cy="${y}" rx="${SEA.islR+6}" ry="${SEA.islR-2}" fill="#e8d6a6"/>
+      <ellipse cx="${x}" cy="${y-4}" rx="${SEA.islR-10}" ry="${SEA.islR-20}" fill="${me?'#6fae5b':'#86b86b'}"/>
+      <line x1="${ex}" y1="${ey}" x2="${px-(px-x)*.12}" y2="${py-(py-y)*.12}" stroke="#6b4a2b" stroke-width="10" stroke-linecap="round"/>
+      <circle cx="${px}" cy="${py}" r="${SEA.dockR-8}" fill="none" stroke="${esc(c.color)}" stroke-width="3" stroke-dasharray="7 7" opacity=".9"/>
+      <text x="${px}" y="${py+SEA.dockR+10}" text-anchor="middle" font-size="15" fill="${esc(c.color)}" font-family="Do Hyeon,sans-serif">항구</text></g>`}).join('');
+  const rocks=SEA.rocks.map(([x,y,r])=>`<g><circle cx="${x}" cy="${y+4}" r="${r+6}" fill="#cfe6ee" opacity=".6"/><circle cx="${x}" cy="${y}" r="${r}" fill="#8c98a3"/><circle cx="${x-r*.3}" cy="${y-r*.3}" r="${r*.45}" fill="#a9b4be"/></g>`).join('');
+  return `<svg class="sea-bg" viewBox="0 0 ${SEA.W} ${SEA.H}" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="seag" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5fa8c9"/><stop offset="1" stop-color="#2f7ea6"/></linearGradient>
+    <pattern id="wave" width="80" height="40" patternUnits="userSpaceOnUse"><path d="M0 20q10-8 20 0t20 0t20 0t20 0" fill="none" stroke="#ffffff" stroke-opacity=".18" stroke-width="2"/></pattern></defs>
+    <rect width="${SEA.W}" height="${SEA.H}" fill="url(#seag)"/><rect width="${SEA.W}" height="${SEA.H}" fill="url(#wave)"/>${rocks}${isl}</svg>`;
+}
+function seaPanel(cid){
+  const s=shipOf(cid);const blocked=L.canTrade(S);
+  const cards=cfg.countries.map((c,i)=>{const [x,y]=SEA.isl[i];const st=cst(c.id);const me=c.id===cid;
+    return `<div class="isle${me?' me':''}" style="left:${x/SEA.W*100}%;top:${y/SEA.H*100}%;--nc:${esc(c.color)}"><div class="isle-hd">${flag(c,20)}<b>${esc(c.name)}</b>${me?'<span class="me-tag">우리</span>':''}</div>
+      <div class="isle-inv">${cfg.items.map(it=>`<span>${itemIcon(it.id,15)}<span class="num">${fmtN(st.inv[it.id])}</span><small>${esc(it.unit)}</small></span>`).join('')}</div></div>`}).join('');
+  const at=s.dock?C(s.dock):null;
+  const banner=at?(s.dock===cid?`<div class="sea-banner">우리 항구에 있어요. 방향키로 다른 나라 항구까지 배를 몰아 보세요.</div>`:`<div class="sea-banner arrive" style="--nc:${esc(at.color)}">${flag(at,20)} <b>${esc(at.name)} 항구</b>에 도착했어요! 아래에서 거래를 요청하세요.</div>`):'';
+  const jump=opts.mode!=='student'?`<div class="row" style="gap:6px"><span class="label">교사용 바로 이동</span>${cfg.countries.map(c=>`<button class="btn ghost small" data-a="sea-jump" data-c="${cid}" data-v="${c.id}">${flag(c,18)}${esc(c.name)}</button>`).join('')}</div>`:'';
+  return `<section class="panel"><h2>무역의 바다</h2>
+   ${blocked?`<p class="callout" style="margin:0 0 12px">${esc(blocked)}</p>`:''}
+   <div class="sea" id="sea">${seaSVG(cid)}${cards}
+     <div class="ship" id="ship" data-c="${cid}" style="--nc:${esc(C(cid).color)};left:${s.x/SEA.W*100}%;top:${s.y/SEA.H*100}%"><div class="boat" style="transform:rotate(${s.a}deg) scaleY(${Math.abs(s.a)>90?-1:1})">${BOAT(esc(C(cid).color))}</div></div>${banner}</div>
+   <div class="sea-ctrl"><div class="dpad" aria-label="배 움직이기"><button data-dir="up" aria-label="위로">▲</button><button data-dir="left" aria-label="왼쪽으로">◀</button><button data-dir="right" aria-label="오른쪽으로">▶</button><button data-dir="down" aria-label="아래로">▼</button></div>
+     <p class="muted" style="margin:0">키보드 방향키나 화면의 화살표를 <b>누르고 있으면</b> 배가 움직여요. 바위와 섬은 돌아가야 해요. 다른 나라의 <b>항구(점선 동그라미)</b>에 닿으면 거래를 요청할 수 있어요.</p></div>
+   ${jump}</section>`;
+}
+function portPanel(cid,to){
+  const T=C(to),my=cst(cid).inv,th=cst(to).inv,U=L.tradeUnits(cfg);const blocked=L.canTrade(S);
+  const key=cid+'>'+to;ui.port=ui.port||{};
+  let d=ui.port[key];
+  if(!d){const g=cfg.items.slice().sort((a,b)=>(my[b.id]-b.target)/b.target-(my[a.id]-a.target)/a.target)[0].id;
+    const t=cfg.items.filter(it=>it.id!==g).sort((a,b)=>(th[b.id]-b.target)/b.target-(th[a.id]-a.target)/a.target)[0].id;d=ui.port[key]={give:g,get:t}}
+  const pend=S.trades.find(t=>t.status==='pending'&&t.from===cid&&t.to===to);
+  const opt=(k,it)=>{const mine=k==='give';const have=(mine?my:th)[it.id]||0;const low=have<U[it.id];const same=!mine&&it.id===d.give;
+    return `<button class="opt${d[k]===it.id?' on':''}" data-a="pg" data-c="${cid}" data-v="${to}" data-k="${k}" data-i="${it.id}" ${(mine&&low)||same?'disabled':''} aria-pressed="${d[k]===it.id}">${itemIcon(it.id,30)}<span><b>${esc(it.name)} <span class="num">${q(U[it.id],it.id)}</span></b><small>${mine?'우리':esc(T.name)} 창고 <span class="num">${q(have,it.id)}</span>${low?(mine?' · 부족':' · 지금은 부족'):''}</small></span></button>`};
+  const gi=I(d.give),ti=I(d.get);const short=(my[d.give]||0)<U[d.give];const busy=!!ui.busy['tp-'+cid];
+  return `<section class="panel port" style="--nc:${esc(T.color)}"><h2>${flag(T,28)} ${esc(T.name)} 항구 · 거래 요청 쓰기</h2>
+   ${pend?`<div class="letter"><div class="label">보낸 요청 · ${esc(T.name)}의 거래 요청함에서 기다리는 중</div><p>“우리 ${esc(I(pend.give.item).name)} <b class="num">${q(pend.give.qty,pend.give.item)}</b>을(를) 줄 테니, ${esc(T.name)}의 ${esc(I(pend.get.item).name)} <b class="num">${q(pend.get.qty,pend.get.item)}</b>을(를) 주세요.”</p>
+     <div class="row"><button class="btn ghost small" data-a="reject" data-c="${cid}" data-t="${pend.id}" ${ui.busy['t-'+pend.id]?'disabled':''}>요청 취소</button><span class="muted" style="font-size:14px">한 나라에는 요청을 하나씩만 보낼 수 있어요.</span></div></div>`
+   :`<div class="grid2"><div><div class="row" style="margin-bottom:8px"><span class="tag ex">수출</span><b>우리가 줄 물품</b></div><div class="opts">${cfg.items.map(it=>opt('give',it)).join('')}</div></div>
+     <div><div class="row" style="margin-bottom:8px"><span class="tag im">수입</span><b>${esc(T.name)}에서 받을 물품</b></div><div class="opts">${cfg.items.map(it=>opt('get',it)).join('')}</div></div></div>
+     <div class="letter" style="margin-top:14px"><p>“우리 ${esc(gi.name)} <b class="num">${q(U[d.give],d.give)}</b>을(를) 줄 테니, ${esc(T.name)}의 ${esc(ti.name)} <b class="num">${q(U[d.get],d.get)}</b>을(를) 주세요.”</p>
+     <p class="muted" style="margin:0;font-size:13px">한 번에 주고받는 양은 정해져 있어요(1년 필요량의 절반). 요청은 ${esc(T.name)}의 거래 요청함으로 가고, ${esc(T.name)}이(가) 수락하면 거래가 이루어져요.</p></div>
+     <button class="btn accent" style="margin-top:12px;width:100%" data-a="sea-propose" data-c="${cid}" data-v="${to}" ${blocked||short||d.give===d.get||busy?'disabled':''}>거래 요청 보내기</button>`}
+   </section>`;
+}
+function inboxPanel(cid){
+  const inc=S.trades.filter(t=>t.status==='pending'&&t.to===cid);
+  const sent=S.trades.filter(t=>t.status==='pending'&&t.from===cid);
+  const done=S.trades.filter(t=>t.status==='done'&&(t.from===cid||t.to===cid));
+  const my=cst(cid).inv;const blocked=L.canTrade(S);
+  const incCards=inc.length?inc.map(t=>{const A=C(t.from);const lack=(my[t.get.item]||0)<t.get.qty;const b=!!ui.busy['t-'+t.id];
+    return `<div class="letter incoming" style="--nc:${esc(A.color)}"><div class="row">${flag(A,22)}<b>${esc(A.name)}에서 온 거래 요청</b></div>
+      <p>“우리 ${esc(I(t.give.item).name)} <b class="num">${q(t.give.qty,t.give.item)}</b>을(를) 줄 테니, ${esc(C(cid).name)}의 ${esc(I(t.get.item).name)} <b class="num">${q(t.get.qty,t.get.item)}</b>을(를) 주세요.”</p>
+      ${dealText(t,cid)}
+      <div class="row"><button class="btn good" data-a="accept" data-c="${cid}" data-t="${t.id}" ${blocked||lack||b?'disabled':''}>수락하기</button>${lack?`<span style="color:var(--warn);font-size:14px;font-weight:600">우리 창고에 ${esc(I(t.get.item).name)}이(가) 부족해요. 더 생산하면 수락할 수 있어요.</span>`:''}</div></div>`}).join(''):'<p class="muted" style="margin:0">도착한 요청이 없어요.</p>';
+  const sentList=sent.length?`<h3>보낸 요청</h3>${sent.map(t=>{const B=C(t.to);return `<div class="deal"><div class="row">${flag(B,20)}<b>${esc(B.name)}</b><span class="tag pend">기다리는 중</span><button class="btn ghost small" style="margin-left:auto" data-a="reject" data-c="${cid}" data-t="${t.id}" ${ui.busy['t-'+t.id]?'disabled':''}>요청 취소</button></div>${dealText(t,cid)}</div>`}).join('')}`:'';
+  const ts=L.tradeSummary(S,cfg,cid);
+  const ledger=done.length?`<div class="tablewrap"><table><thead><tr><th>거래한 나라</th><th>수출(보냄)</th><th>수입(받음)</th></tr></thead><tbody>${done.slice().reverse().map(t=>{const o=C(t.from===cid?t.to:t.from);const g=t.from===cid?t.give:t.get,r=t.from===cid?t.get:t.give;
+      return `<tr><td><span class="itemhead">${flag(o,20)}${esc(o.name)}</span></td><td><span class="itemhead">${itemIcon(g.item,18)}${esc(I(g.item).name)} <span class="num">${q(g.qty,g.item)}</span></span></td><td><span class="itemhead">${itemIcon(r.item,18)}${esc(I(r.item).name)} <span class="num">${q(r.qty,r.item)}</span></span></td></tr>`}).join('')}</tbody></table></div>
+    <p class="muted" style="margin:8px 0 0;font-size:14px">수출 합계: ${cfg.items.filter(it=>ts.exports[it.id]).map(it=>`${esc(it.name)} ${q(ts.exports[it.id],it.id)}`).join(', ')||'없음'} · 수입 합계: ${cfg.items.filter(it=>ts.imports[it.id]).map(it=>`${esc(it.name)} ${q(ts.imports[it.id],it.id)}`).join(', ')||'없음'}</p>`:'<p class="muted" style="margin:0">아직 이루어진 거래가 없어요.</p>';
+  return `<section class="panel"><h2>거래 요청함${inc.length?` <span class="badge num">${inc.length}</span>`:''}</h2><div class="grid2"><div style="display:grid;gap:12px;align-content:start;min-width:0">${incCards}${sentList}</div>
+    <div style="min-width:0"><h3>무역 장부</h3>${ledger}</div></div></section>`;
+}
+function notifyIncoming(cid){
+  const ids=S.trades.filter(t=>t.status==='pending'&&t.to===cid).map(t=>t.id);
+  ui.seenInc=ui.seenInc||{};const seen=ui.seenInc[cid];
+  if(seen){const fresh=ids.filter(x=>!seen.includes(x));if(fresh.length){const t=S.trades.find(x=>x.id===fresh[fresh.length-1]);toast(`${C(t.from).name}에서 거래 요청이 도착했어요. 거래 요청함을 확인하세요.`)}}
+  ui.seenInc[cid]=ids;
 }
 function sheet(title,qs,tip){
   return `<section class="panel"><h2>${esc(title)} <span class="tag pend" style="font-family:var(--f-body);font-size:13px">개인 학습지</span></h2><ol class="qs">${qs.map(x=>`<li>${esc(x)}</li>`).join('')}</ol><p class="muted" style="margin:10px 0 0">${esc(tip||'각자 학습지에 생각을 적은 뒤 모둠에서 이야기해 보세요.')}</p></section>`;
@@ -242,7 +341,7 @@ function studentView(cid){
   else if(s===3)h+=round1Panel(cid);
   else if(s===4)h+=strategyPanel(cid)+infoPanel(cid,true);
   else if(s===5)h+=productionPanel(cid)+infoPanel(cid,false);
-  else if(s===6)h+=tradePanel(cid)+productionPanel(cid);
+  else if(s===6){const sh=shipOf(cid);h+=seaPanel(cid)+(sh.dock&&sh.dock!==cid?portPanel(cid,sh.dock):'')+inboxPanel(cid)+productionPanel(cid)}
   else if(s===7)h+=comparePanel(cid);
   else h+=finalPanel()+comparePanel(cid);
   return h;
@@ -261,7 +360,7 @@ function teacherView(){
      <div class="mini">${cfg.items.map(it=>`${itemIcon(it.id,20)}${bar('t-'+c.id+it.id,sec.per[it.id],itemColor(it.id))}<span class="num">${q(st.inv[it.id]||0,it.id)}</span>`).join('')}</div>
      <div class="chips">${st.log.filter(l=>l.round===round()).map(l=>`<span class="chip" style="padding:2px 6px">${itemIcon(l.item,16)}</span>`).join('')}</div></div>`}).join('');
   const trades=S.trades.slice().reverse();
-  const statusName={pending:'대기',done:'성립',rejected:'거절',withdrawn:'제안 취소',reverted:'교사 취소',expired:'단계 변경으로 무효'};
+  const statusName={pending:'대기',done:'성립',rejected:'교사 무효',withdrawn:'제안 취소',reverted:'교사 취소',expired:'단계 변경으로 무효'};
   const tlog=trades.length?`<div class="tablewrap"><table><thead><tr><th>번호</th><th>제안한 나라 → 받은 나라</th><th>제안국이 보냄</th><th>제안국이 받음</th><th>상태</th><th></th></tr></thead><tbody>${trades.map(t=>`<tr><td class="num">${S.trades.indexOf(t)+1}</td><td>${esc(C(t.from).name)} → ${esc(C(t.to).name)}</td><td class="num">${esc(I(t.give.item).name)} ${q(t.give.qty,t.give.item)}</td><td class="num">${esc(I(t.get.item).name)} ${q(t.get.qty,t.get.item)}</td><td>${statusName[t.status]||t.status}</td><td>${t.status==='done'?`<button class="btn ghost small" data-a="revert" data-t="${t.id}">거래 취소</button>`:t.status==='pending'?`<button class="btn ghost small" data-a="t-cancel" data-t="${t.id}">무효 처리</button>`:''}</td></tr>`).join('')}</tbody></table></div>`:'<p class="muted" style="margin:0">아직 거래 기록이 없습니다.</p>';
   const tot=L.totals({countries:Object.fromEntries(cfg.countries.map(c=>[c.id,cst(c.id)]))},cfg);
   const demoTail=opts.mode==='demo'?`<section class="panel"><h2>시연 모드</h2><p class="muted" style="margin:0">이 기기 안에서만 저장됩니다. 위쪽 탭으로 나라를 바꿔 가며 수업 흐름을 시험할 수 있고, 같은 브라우저의 다른 탭에서 열어도 상태가 함께 바뀝니다.</p><div class="row" style="margin-top:12px"><button class="btn warn small" data-a="reset">게임 전체 초기화</button></div></section>`:'';
@@ -303,7 +402,7 @@ function settingsPanel(){
 /* ---------- 발표 화면 ---------- */
 function projectorView(){
   const st=L.STAGES[S.stage-1];
-  const Q={1:'모든 물건을 직접 만드는 것보다 다른 나라와 무역하는 것이 왜 유리할까?',2:'네 가지 물품을 모두 100% 확보할 수 있을까요?',3:'왜 모든 물품을 100% 확보하지 못했을까요?',4:'다른 나라와 물품을 교환할 수 있다면, 어떤 상품을 생산하는 것이 좋을까요?',5:'우리 모둠의 계획대로 생산해 봅시다.',6:'무엇을 수출하고 무엇을 수입하나요?',7:'1차와 2차는 무엇이 달랐나요? 모든 나라가 함께 나아졌나요?',8:'나라마다 생산에 유리한 조건이 다르기 때문에…'};
+  const Q={1:'모든 물건을 직접 만드는 것보다 다른 나라와 무역하는 것이 왜 유리할까?',2:'네 가지 물품을 모두 100% 확보할 수 있을까요?',3:'왜 모든 물품을 100% 확보하지 못했을까요?',4:'다른 나라와 물품을 교환할 수 있다면, 어떤 상품을 생산하는 것이 좋을까요?',5:'우리 모둠의 계획대로 생산해 봅시다.',6:'배를 몰아 다른 나라 항구로! 무엇을 수출하고 무엇을 수입하나요?',7:'1차와 2차는 무엇이 달랐나요? 모든 나라가 함께 나아졌나요?',8:'나라마다 생산에 유리한 조건이 다르기 때문에…'};
   const showR1=S.stage===3||S.stage===4;
   const data=(id)=>showR1?r1Data(id):cst(id);
   const all=cfg.countries.map(c=>L.security(cfg,data(c.id).inv).overall);
@@ -337,6 +436,7 @@ function render(force){
   bars.forEach(el=>{el.style.transition='';el.style.width=el.dataset.w+'%'});
   if(Math.abs(window.scrollY-sy)>2)window.scrollTo(0,sy);
   ui.pop=null;
+  if(S.stage===6&&C(view))notifyIncoming(view);
   const d=document.getElementById('cfg-details');if(d)d.addEventListener('toggle',()=>{if(ui.cfgOpen!==d.open){ui.cfgOpen=d.open;render(true)}});
 }
 function setView(v){view=v;try{history.replaceState(null,'','#'+v)}catch(e){}store.set('tradeGame.view.'+opts.mode,v);render(true);window.scrollTo(0,0)}
@@ -364,13 +464,12 @@ function onClick(e){
     return run('p-'+cid,()=>B.produce(cid,item)).then(r=>{if(r&&r.ok){ui.pop={c:cid,i:item,n:r.amount};render(true)}});
   }
   if(a==='undo')return run('p-'+cid,()=>B.undo(cid),'마지막 생산을 되돌렸어요.');
-  if(a==='d-to'){ui.draft[cid].to=b.dataset.v;return render(true)}
-  if(a==='d-item'){ui.draft[cid][b.dataset.k]=b.dataset.i;return render(true)}
-  if(a==='d-step'){const d=ui.draft[cid],k=b.dataset.k+'Qty';d[k]=Math.max(1,(d[k]||1)+Number(b.dataset.d));return render(true)}
-  if(a==='propose'){const d=ui.draft[cid];
-    return run('tp-'+cid,()=>B.propose(cid,d.to,{item:d.give,qty:d.giveQty},{item:d.get,qty:d.getQty}),`${C(d.to).name}에 거래를 제안했어요. 상대 나라가 수락하면 성립해요.`)}
-  if(a==='accept')return run('t-'+b.dataset.t,()=>B.accept(cid,b.dataset.t),'거래가 성립했어요. 창고가 바뀌었어요.');
-  if(a==='reject')return run('t-'+b.dataset.t,()=>B.reject(cid,b.dataset.t));
+  if(a==='pg'){const key=cid+'>'+b.dataset.v,d=ui.port[key];d[b.dataset.k]=b.dataset.i;if(d.give===d.get)d.get=cfg.items.find(it=>it.id!==d.give).id;return render(true)}
+  if(a==='sea-propose'){const to=b.dataset.v,d=ui.port[cid+'>'+to],U=L.tradeUnits(cfg),T=C(to);
+    return run('tp-'+cid,()=>B.propose(cid,to,{item:d.give,qty:U[d.give]},{item:d.get,qty:U[d.get]}),`${T.name}의 거래 요청함에 요청을 보냈어요. ${T.name}이(가) 수락하면 거래가 이루어져요.`)}
+  if(a==='sea-jump'){const s=shipOf(cid),p=SEA.port[seaIdx(b.dataset.v)];s.x=p[0];s.y=p[1];s.dock=b.dataset.v;return render(true)}
+  if(a==='accept')return run('t-'+b.dataset.t,()=>B.accept(cid,b.dataset.t),'거래가 이루어졌어요. 창고가 바뀌었어요.');
+  if(a==='reject')return run('t-'+b.dataset.t,()=>B.reject(cid,b.dataset.t),'요청을 취소했어요.');
   if(a==='revert'){const t=b.dataset.t;return ask('이 거래를 취소할까요?','두 나라의 창고를 거래 전으로 되돌립니다. 이미 다른 거래에 쓰인 물품이 있으면 취소할 수 없습니다.','거래 취소',()=>run('t-'+t,()=>B.revert(t),'거래를 취소했습니다.'),true)}
   if(a==='t-cancel'){const t=b.dataset.t;return run('t-'+t,()=>B.cancelTrade(t),'제안을 무효 처리했습니다.')}
   if(a==='stage'){const n=Number(b.dataset.n);if(n===S.stage||n<1||n>8)return;
@@ -385,7 +484,6 @@ function onClick(e){
 function onChange(e){const el=e.target;const a=el.dataset.a;const B=opts.backend;
   if(a==='lock'){const k=el.dataset.k,v=el.checked;run('lock',()=>B.setFlag('locks.'+k,v),v?'잠갔습니다.':'잠금을 풀었습니다.')}
   if(a==='undoflag'){const v=el.checked;run('undoflag',()=>B.setFlag('allowUndo',v))}
-  if(a==='d-qty'){const d=ui.draft[el.dataset.c];d[el.dataset.k+'Qty']=Math.max(1,parseInt(el.value,10)||1);el.blur();render(true)}
 }
 
 const TradeUI={
@@ -399,6 +497,7 @@ const TradeUI={
   update(state,config,ex){S=state;cfg=config;extra=ex||{};render()},
   render(){render(true)},
   toast, ask, esc, flag, itemIcon,
+  sailTo(cid,to){const s=shipOf(cid),p=SEA.port[seaIdx(to)];s.x=p[0];s.y=p[1];s.dock=to;render(true)},
   get view(){return view}
 };
 document.addEventListener('click',onClick);

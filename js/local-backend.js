@@ -5,7 +5,7 @@
 (function (root) {
   'use strict';
   const L = root.TradeLogic;
-  const KEY_S = 'tradeGame.state.v1', KEY_C = 'tradeGame.cfg.v1';
+  const KEY_S = 'tradeGame.state.v2', KEY_C = 'tradeGame.cfg.v2';
   const get = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
   const set = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 

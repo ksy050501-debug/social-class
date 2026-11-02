@@ -12,7 +12,8 @@ PORT = 8123
 BASE = f'http://127.0.0.1:{PORT}'
 IDS = ['gaon', 'narae', 'daon', 'raon']
 SPEC = {'gaon': 'rice', 'narae': 'oil', 'daon': 'car', 'raon': 'phone'}
-QTY = {'rice': 20, 'oil': 20, 'car': 12, 'phone': 16}
+QTY = {'rice': 400, 'oil': 8, 'car': 160, 'phone': 1600}   # 1년 목표량
+UNIT = {'rice': 200, 'oil': 4, 'car': 80, 'phone': 800}   # 고정 거래량 (목표량의 절반)
 results = []
 
 def check(name, cond, detail=''):
@@ -97,7 +98,7 @@ async def main():
             await asyncio.sleep(1.2)
             st = json.loads(await T.evaluate("localStorage.getItem('FAKEFS')"))
             g = st[f'rooms/{code}/countries/gaon']['d']
-            check('생산 버튼 연타 6번 → 남은 기회 이하로만 생산, 수량 일치', g['chances'] >= 0 and g['inv']['rice'] == 20 * (4 - g['chances']), f"기회 {g['chances']}, 쌀 {g['inv']['rice']}kg")
+            check('생산 버튼 연타 6번 → 남은 기회 이하로만 생산, 수량 일치', g['chances'] >= 0 and g['inv']['rice'] == 400 * (4 - g['chances']), f"기회 {g['chances']}, 쌀 {g['inv']['rice']}만 톤")
             # 나머지 기회 소진(가온), 다른 나라는 네 가지 한 번씩
             left = g['chances']
             for it in ['oil', 'car', 'phone'][:left]: await produce('gaon', it)
@@ -118,63 +119,70 @@ async def main():
             await asyncio.sleep(0.5)
             await stage(6)
 
-            # ---------- 무역 ----------
-            async def propose(a, bb, gi, gq, ti, tq):
+            # ---------- 무역: 배를 몰아 항구에 도착 → 정해진 양으로 요청 → 상대는 수락만 ----------
+            def fsget():
+                return T.evaluate("localStorage.getItem('FAKEFS')")
+            async def sail(a, bb):
+                await S[a].evaluate(f"window.TradeUI.sailTo('{a}', '{bb}')"); await asyncio.sleep(0.2)
+            async def request(a, bb, gi, ti):
                 pg = S[a]
-                await pg.click(f'[data-a=d-to][data-v={bb}]')
-                await pg.click(f'[data-a=d-item][data-k=give][data-i={gi}]')
-                await pg.click(f'[data-a=d-item][data-k=get][data-i={ti}]')
-                await pg.fill(f'#qty-{a}-give', str(gq)); await pg.press(f'#qty-{a}-give', 'Tab')
-                await pg.fill(f'#qty-{a}-get', str(tq)); await pg.press(f'#qty-{a}-get', 'Tab')
-                await pg.click('[data-a=propose]')
+                await pg.click(f'[data-a=pg][data-k=give][data-i={gi}]')
+                await pg.click(f'[data-a=pg][data-k=get][data-i={ti}]')
+                await pg.click('[data-a=sea-propose]')
                 await asyncio.sleep(0.4)
-            await propose('gaon', 'narae', 'rice', 20, 'oil', 20)
-            await S['narae'].wait_for_selector('.deal.incoming [data-a=accept]')
-            await S['narae'].screenshot(path=f'{SHOTS}/s3-incoming.png', full_page=True)
-            await S['narae'].click('.deal.incoming [data-a=accept]')
-            await asyncio.sleep(0.6)
+            async def accept(bb):
+                await S[bb].wait_for_selector('.letter.incoming [data-a=accept]:not([disabled])')
+                await S[bb].click('.letter.incoming [data-a=accept]'); await asyncio.sleep(0.5)
 
-            # 동시 수락 경쟁: 가온국 쌀 60kg으로 40kg씩 두 제안
-            await propose('gaon', 'daon', 'rice', 40, 'car', 12)
-            await propose('gaon', 'raon', 'rice', 40, 'phone', 16)
-            await S['daon'].wait_for_selector('.deal.incoming [data-a=accept]')
-            await S['raon'].wait_for_selector('.deal.incoming [data-a=accept]')
-            await asyncio.gather(S['daon'].click('.deal.incoming [data-a=accept]'), S['raon'].click('.deal.incoming [data-a=accept]'))
-            await asyncio.sleep(1.5)
-            st = json.loads(await T.evaluate("localStorage.getItem('FAKEFS')"))
-            trades = [v['d'] for k, v in st.items() if k.startswith(f'rooms/{code}/trades/')]
-            done40 = [t for t in trades if t['give']['qty'] == 40 and t['status'] == 'done']
-            rice = st[f'rooms/{code}/countries/gaon']['d']['inv']['rice']
-            check('같은 재고로 두 나라가 동시에 수락 → 하나만 성립, 음수 없음', len(done40) == 1 and rice == 20, f'성립 {len(done40)}건, 가온 쌀 {rice}kg')
-            # 교사가 성립한 거래 취소, 남은 제안 무효 처리
+            # 실제 방향키 항해: 가온국 항구에서 오른쪽으로 쭉 가면 나래국 항구
+            await S['gaon'].bring_to_front()
+            await S['gaon'].wait_for_selector('#sea')
+            await S['gaon'].keyboard.down('ArrowRight'); await asyncio.sleep(2.4); await S['gaon'].keyboard.up('ArrowRight')
+            await asyncio.sleep(0.3)
+            arrived = await S['gaon'].locator('.sea-banner.arrive').count()
+            check('방향키로 배를 몰아 다른 나라 항구에 도착', arrived == 1 and await S['gaon'].locator('[data-a=sea-propose]').count() == 1)
+            await S['gaon'].screenshot(path=f'{SHOTS}/s3-port.png', full_page=True)
+            await request('gaon', 'narae', 'rice', 'oil')
+            st = json.loads(await fsget())
+            tr = [v['d'] for k, v in st.items() if k.startswith(f'rooms/{code}/trades/')]
+            check('요청 수량은 정해진 양(쌀 200만 톤 ↔ 석유 4억 배럴)', len(tr) == 1 and tr[0]['give']['qty'] == UNIT['rice'] and tr[0]['get']['qty'] == UNIT['oil'], str(tr))
+            await S['narae'].wait_for_selector('.letter.incoming [data-a=accept]')
+            n_rej = await S['narae'].locator('.letter.incoming [data-a=reject]').count()
+            check('받은 요청에는 수락 버튼만 있음(거절 없음)', n_rej == 0)
+            await S['narae'].screenshot(path=f'{SHOTS}/s3-incoming.png', full_page=True)
+            await accept('narae')
+
+            # 교사: 성립한 거래 취소, 기다리는 요청 무효 처리
+            await sail('gaon', 'daon'); await request('gaon', 'daon', 'rice', 'car'); await accept('daon')
             await T.bring_to_front()
             await T.click('[data-a=revert]'); await T.click('[data-a=modal-yes]'); await asyncio.sleep(0.6)
+            st = json.loads(await fsget())
+            check('교사가 거래를 취소하면 창고가 되돌아감', st[f'rooms/{code}/countries/gaon']['d']['inv']['rice'] == 1400)
+            await sail('gaon', 'raon'); await request('gaon', 'raon', 'rice', 'phone')
+            await asyncio.sleep(0.4)
             while await T.locator('[data-a=t-cancel]').count():
                 await T.click('[data-a=t-cancel] >> nth=0'); await asyncio.sleep(0.5)
-            st = json.loads(await T.evaluate("localStorage.getItem('FAKEFS')"))
-            check('교사가 거래를 취소하면 창고가 되돌아감', st[f'rooms/{code}/countries/gaon']['d']['inv']['rice'] == 60)
 
-            # 남은 정상 거래 5건
-            for a, bb in [('gaon', 'daon'), ('gaon', 'raon'), ('narae', 'daon'), ('narae', 'raon'), ('daon', 'raon')]:
-                await propose(a, bb, SPEC[a], QTY[SPEC[a]], SPEC[bb], QTY[SPEC[bb]])
-                await S[bb].wait_for_selector('.deal.incoming [data-a=accept]')
-                await S[bb].click('.deal.incoming [data-a=accept]'); await asyncio.sleep(0.5)
-            st = json.loads(await T.evaluate("localStorage.getItem('FAKEFS')"))
+            # 나라 쌍마다 두 번씩 (가온-나래는 한 번 남음) → 네 나라 모두 100%
+            for a, bb, n in [('gaon', 'narae', 1), ('gaon', 'daon', 2), ('gaon', 'raon', 2), ('narae', 'daon', 2), ('narae', 'raon', 2), ('daon', 'raon', 2)]:
+                for _ in range(n):
+                    await sail(a, bb); await request(a, bb, SPEC[a], SPEC[bb]); await accept(bb)
+            st = json.loads(await fsget())
             invs = {cid: st[f'rooms/{code}/countries/{cid}']['d']['inv'] for cid in IDS}
             full = all(invs[c][i] >= QTY[i] for c in IDS for i in QTY)
             tot = {i: sum(invs[c][i] for c in IDS) for i in QTY}
             check('네 나라 모두 100% 달성', full, json.dumps(invs, ensure_ascii=False))
-            check('전체 물품 합계 보존 (쌀80·석유80·자동차48·스마트폰64)', tot == {'rice': 80, 'oil': 80, 'car': 48, 'phone': 64}, str(tot))
+            check('전체 물품 합계 보존', tot == {i: QTY[i] * 4 for i in QTY}, str(tot))
             await T.screenshot(path=f'{SHOTS}/t2-trade.png', full_page=True)
 
-            # 단계 변경 중 거래 시도: 제안을 띄워 두고 교사가 7단계로 → 수락 버튼 사라지고 거래 무효
-            await propose('gaon', 'narae', 'rice', 1, 'oil', 1)
+            # 단계 변경 중 요청: 요청을 띄워 두고 교사가 7단계로 → 수락 버튼 사라지고 요청 무효
+            await sail('gaon', 'narae'); await request('gaon', 'narae', 'rice', 'oil')
             await stage(7)
             await asyncio.sleep(0.6)
             n_acc = await S['narae'].locator('[data-a=accept]').count()
-            st = json.loads(await T.evaluate("localStorage.getItem('FAKEFS')"))
-            exp = [v['d']['status'] for k, v in st.items() if k.startswith(f'rooms/{code}/trades/') and v['d']['give']['qty'] == 1]
-            check('단계가 바뀌면 남은 제안은 무효, 학생 화면에서 수락 불가', n_acc == 0 and exp == ['expired'], str(exp))
+            st = json.loads(await fsget())
+            exp = [v['d']['status'] for k, v in st.items() if k.startswith(f'rooms/{code}/trades/') and v['d']['status'] not in ('done', 'reverted', 'rejected', 'withdrawn')]
+            check('단계가 바뀌면 남은 요청은 무효, 학생 화면에서 수락 불가', n_acc == 0 and exp == ['expired'], str(exp))
             await S['gaon'].screenshot(path=f'{SHOTS}/s4-compare.png', full_page=True)
             await T.click('[data-a=view][data-v=projector]'); await asyncio.sleep(0.5)
             await T.screenshot(path=f'{SHOTS}/t3-projector.png', full_page=True)

@@ -25,7 +25,8 @@ service cloud.firestore {
     function roundOf(r) { return r.stage <= 3 ? 1 : 2; }
     function canProduce(r) { return r.locks.production == false && (r.stage == 2 || r.stage == 5 || r.stage == 6); }
     function canTrade(r) { return r.stage == 6 && r.locks.trade == false; }
-    function isQty(x) { return x is int && x > 0 && x <= 100000; }
+    // 거래량은 방에 저장된 고정 단위(units)와 정확히 같아야 함
+    function unitOk(r, o) { return o.qty is int && o.qty == r.units[o.item]; }
 
     // ---------- 생산 ----------
     function produceOk(code, cid, item) {
@@ -101,7 +102,7 @@ service cloud.firestore {
         && t.from != t.to && exists(cp(code, t.to))
         && t.give.item in r.outputs[t.from] && t.get.item in r.outputs[t.from]
         && t.give.item != t.get.item
-        && isQty(t.give.qty) && isQty(t.get.qty)
+        && unitOk(r, t.give) && unitOk(r, t.get)
         && t.give.keys().hasOnly(['item', 'qty']) && t.get.keys().hasOnly(['item', 'qty'])
         && get(cp(code, t.from)).data.inv[t.give.item] >= t.give.qty
         && t.keys().hasOnly(['from', 'to', 'give', 'get', 'status', 'createdAt', 'by']);
@@ -118,9 +119,10 @@ service cloud.firestore {
     function rejectOk(code) {
       let o = resource.data;
       let n = request.resource.data;
+      // 받은 나라는 거절할 수 없고, 보낸 나라만 요청을 취소할 수 있음 (교사 무효 처리는 isTeacher)
       return o.status == 'pending'
         && n.diff(o).affectedKeys().hasOnly(['status'])
-        && ((n.status == 'rejected' && holds(code, o.to)) || (n.status == 'withdrawn' && holds(code, o.from)));
+        && n.status == 'withdrawn' && holds(code, o.from);
     }
 
     match /rooms/{code} {
