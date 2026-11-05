@@ -1,6 +1,6 @@
 /* 학생 화면: 입장 코드 → 나라 고르기(기기당 한 번) → 우리나라 화면 */
 import { configured, fs, authApi, connect } from './fb.js';
-import { createRemoteBackend, joinSeat, myCountry, heartbeat, roomRefs, HEARTBEAT } from './remote.js';
+import { createRemoteBackend, joinSeat, myCountry, heartbeat, roomRefs, HEARTBEAT, roomUsable } from './remote.js';
 import { setupNotice, gateClick, el } from './common.js';
 
 const L = window.TradeLogic, UI = window.TradeUI, esc = UI.esc;
@@ -36,6 +36,7 @@ async function enter(raw) {
   try {
     const r = await fs.getDoc(fs.doc(ctx.db, 'rooms', c));
     if (!r.exists()) { store.del(KEY_CODE); return codeScreen('그런 방이 없어요. 입장 코드를 다시 확인해 주세요.'); }
+    if (!roomUsable(r.data())) { store.del(KEY_CODE); history.replaceState(null, '', location.pathname); return codeScreen('지난번 수업 방이에요. 선생님 화면에 있는 새 입장 코드를 입력해 주세요.'); }
     code = c; cfg = r.data().cfg; store.set(KEY_CODE, c);
     const mine = await myCountry(fs, ctx.db, code, uid);
     if (mine) return play(mine);
@@ -75,7 +76,7 @@ function play(id) {
   const c = L.countryById(cfg, id);
   main.innerHTML = `<section class="panel"><p class="muted" style="margin:0">${esc(c.name)} 화면을 불러오는 중…</p></section>`;
   backend = createRemoteBackend({ fs, db: ctx.db, code, uid, onChange: (S, conf, ex) => {
-    if (!S) { store.del(KEY_CODE); codeScreen('선생님이 수업 방을 닫았어요.'); return; }
+    if (!S) { store.del(KEY_CODE); codeScreen(ex && ex.outdated ? '지난번 수업 방이에요. 선생님 화면에 있는 새 입장 코드를 입력해 주세요.' : '선생님이 수업 방을 닫았어요.'); return; }
     cfg = conf; online = ex.online !== false; UI.update(S, conf, ex);
   } });
   UI.mount({ backend, mode: 'student', fixedView: id, tabs: [],

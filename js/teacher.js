@@ -1,6 +1,6 @@
 /* 교사 화면: 구글 로그인 → 수업 방 고르기/만들기 → 관제·발표 화면 */
 import { configured, fs, authApi, connect } from './fb.js';
-import { createRemoteBackend, createRoom, listMyRooms, releaseSeat, deleteRoom } from './remote.js';
+import { createRemoteBackend, createRoom, listMyRooms, releaseSeat, deleteRoom, roomUsable } from './remote.js';
 import { setupNotice, gateClick, el } from './common.js';
 
 const L = window.TradeLogic, UI = window.TradeUI, esc = UI.esc;
@@ -30,7 +30,7 @@ async function roomsScreen(msg) {
   main.innerHTML = `<div class="gate"><section class="panel"><h2>수업 방</h2>
     ${msg ? `<p class="callout" style="margin:0;color:var(--warn)">${esc(msg)}</p>` : ''}
     <button class="btn accent" data-g="create">새 수업 방 만들기</button>
-    ${rooms.length ? `<div class="label">내 수업 방</div><div class="roomlist">${rooms.map((r) => `<button data-g="open" data-code="${r.code}"><span><b class="num" style="font-size:20px;letter-spacing:.1em">${r.code}</b>${r.code === last ? ' <span class="tag pend">최근</span>' : ''}</span><span class="muted">${r.stage}단계 · ${r.createdAt ? new Date(r.createdAt).toLocaleDateString('ko-KR') : ''}</span></button>`).join('')}</div>
+    ${rooms.length ? `<div class="label">내 수업 방</div><div class="roomlist">${rooms.map((r) => `<button data-g="open" data-code="${r.code}" ${r.usable ? '' : 'data-old="1" style="opacity:.55"'}><span><b class="num" style="font-size:20px;letter-spacing:.1em">${r.code}</b>${r.usable && r.code === last ? ' <span class="tag pend">최근</span>' : ''}${r.usable ? '' : ' <span class="tag pend">이전 버전 · 열 수 없음</span>'}</span><span class="muted">${r.usable ? L.stageNo(r.stage) + '단계 · ' : ''}${r.createdAt ? new Date(r.createdAt).toLocaleDateString('ko-KR') : ''}</span></button>`).join('')}</div>
       <p class="muted" style="margin:0;font-size:14px">수업마다 새 방을 만드는 것을 권합니다. 지난 방은 지워도 됩니다.</p>` : '<p class="muted" style="margin:0">아직 만든 방이 없어요.</p>'}
     <div class="row"><button class="btn ghost small" data-g="logout">로그아웃</button>${rooms.length ? `<button class="btn ghost small" data-g="cleanup">지난 방 모두 지우기</button>` : ''}</div>
   </section></div>`;
@@ -58,7 +58,7 @@ function openRoom(c) {
   if (backend) backend.stop();
   lastEx = {};
   backend = createRemoteBackend({ fs, db: ctx.db, code, uid: user.uid, watchSeats: true, onChange: (S, cfg, ex) => {
-    if (!S) { store.del(KEY_ROOM); roomsScreen('이 방이 없어졌어요. 새 방을 만들어 주세요.'); return; }
+    if (!S) { store.del(KEY_ROOM); roomsScreen(ex && ex.outdated ? '이 방은 게임을 고치기 전에 만든 방이라 열 수 없어요. 새 수업 방을 만들어 주세요.' : '이 방이 없어졌어요. 새 방을 만들어 주세요.'); return; }
     lastEx = Object.assign({ cfg }, ex);
     UI.update(S, cfg, ex);
   } });
@@ -96,7 +96,7 @@ gateClick(async (g, b) => {
       b.disabled = true; b.textContent = '만드는 중…';
       const c = await createRoom(fs, ctx.db, user.uid, L.DEFAULT_CONFIG);
       openRoom(c);
-    } else if (g === 'open') openRoom(b.dataset.code);
+    } else if (g === 'open') { if (b.dataset.old) roomsScreen('이전 버전으로 만든 방은 열 수 없어요. [새 수업 방 만들기]를 눌러 주세요. 지난 방은 [지난 방 모두 지우기]로 정리할 수 있어요.'); else openRoom(b.dataset.code); }
     else if (g === 'logout') logout();
     else if (g === 'cleanup') {
       UI.ask('지난 방을 모두 지울까요?', '내가 만든 모든 수업 방과 그 안의 기록이 지워집니다. 되돌릴 수 없습니다.', '모두 지우기', async () => {
@@ -126,7 +126,7 @@ else {
     user = u;
     const last = store.get(KEY_ROOM);
     if (last) {
-      try { const s = await fs.getDoc(fs.doc(ctx.db, 'rooms', last)); if (s.exists() && s.data().ownerUid === u.uid) { openRoom(last); return; } } catch (e) { console.error(e); }
+      try { const s = await fs.getDoc(fs.doc(ctx.db, 'rooms', last)); if (s.exists() && s.data().ownerUid === u.uid && roomUsable(s.data())) { openRoom(last); return; } } catch (e) { console.error(e); }
       store.del(KEY_ROOM);
     }
     roomsScreen();

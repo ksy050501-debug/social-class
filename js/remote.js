@@ -23,6 +23,13 @@ const ms = (t) => (t && typeof t.toMillis === 'function') ? t.toMillis() : (type
 export const ONLINE_WINDOW = 75 * 1000;   // 마지막 신호가 이 시간 안이면 '접속 중'
 export const HEARTBEAT = 25 * 1000;
 
+// 방 구조 버전. 규칙이나 단계 번호가 바뀌어 예전 방을 열 수 없게 되면 올립니다.
+export const ROOM_VERSION = 2;
+const VALID_STAGES = [1, 2, 3, 5, 6, 7];
+export function roomUsable(r) {
+  return !!r && (r.ver || ROOM_VERSION) >= ROOM_VERSION && !!r.units && VALID_STAGES.includes(r.stage);
+}
+
 function baseState(room) {
   return { stage: room.stage, locks: Object.assign({ production: false, trade: false }, room.locks),
     allowUndo: room.allowUndo !== false, countries: {}, round1: room.round1 || null,
@@ -55,7 +62,7 @@ export async function createRoom(fs, db, uid, cfg) {
   }
   if (!code) throw new Error('입장 코드를 만들지 못했어요. 다시 시도해 주세요.');
   const R = roomRefs(fs, db, code);
-  await fs.setDoc(R.room, { ownerUid: uid, createdAt: fs.serverTimestamp(), stage: 1,
+  await fs.setDoc(R.room, { ver: ROOM_VERSION, ownerUid: uid, createdAt: fs.serverTimestamp(), stage: 1,
     locks: { production: false, trade: false }, allowUndo: true, cfg, outputs: L.outputTable(cfg), units: L.tradeUnits(cfg), round1: null });
   const b = fs.writeBatch(db);
   cfg.countries.forEach((c) => b.set(R.country(c.id), freshCountry(cfg)));
@@ -65,7 +72,7 @@ export async function createRoom(fs, db, uid, cfg) {
 export async function listMyRooms(fs, db, uid) {
   const snap = await fs.getDocs(fs.query(fs.collection(db, 'rooms'), fs.where('ownerUid', '==', uid)));
   const out = [];
-  snap.forEach((d) => { const r = d.data(); out.push({ code: d.id, stage: r.stage, createdAt: ms(r.createdAt) }); });
+  snap.forEach((d) => { const r = d.data(); out.push({ code: d.id, stage: r.stage, usable: roomUsable(r), createdAt: ms(r.createdAt) }); });
   return out.sort((a, b) => b.createdAt - a.createdAt);
 }
 export async function deleteRoom(fs, db, code) {
@@ -121,6 +128,7 @@ export function createRemoteBackend({ fs, db, code, uid, onChange, watchSeats })
   function emit() {
     if (!loaded.room) return;
     if (!room) { onChange(null, null, { missing: true }); return; }
+    if (!roomUsable(room)) { onChange(null, null, { outdated: true }); return; }
     const cfg = room.cfg;
     const S = baseState(room);
     cfg.countries.forEach((c) => { S.countries[c.id] = countries[c.id] || { inv: L.emptyInv(cfg), chances: cfg.chances, log: [] }; });

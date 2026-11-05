@@ -320,7 +320,7 @@ function studentView(cid){
 
 /* ---------- 교사 화면 ---------- */
 function teacherView(){
-  const g=TEACHER_GUIDE[S.stage];
+  const g=TEACHER_GUIDE[S.stage]||['',''];
   const r2=S.stage===5?L.round2Progress(S,cfg):null,r2wait=!!(r2&&r2.some(x=>!x.ok));
   const stages=`<div class="stepper-stages">${L.STAGES.map((s,i)=>`<button data-a="stage" data-n="${s.n}" ${s.n===S.stage?'aria-current="step"':''}><b>${i+1}단계</b>${esc(s.title)}</button>`).join('')}</div>`;
   const cards=cfg.countries.map(c=>{const st=cst(c.id),sec=L.security(cfg,st.inv),sp=L.specialties(cfg,c.id).map(i=>I(i).name).join('·')||'없음';
@@ -399,7 +399,8 @@ function render(force){
   renderTop();
   const main=document.getElementById('main');
   const sy=window.scrollY;
-  main.innerHTML=view==='teacher'?teacherView():view==='projector'?projectorView():studentView(view);
+  try{main.innerHTML=view==='teacher'?teacherView():view==='projector'?projectorView():studentView(view);}
+  catch(err){console.error(err);main.innerHTML=`<section class="panel"><h2>화면을 그리지 못했어요</h2><p style="margin:0">이 방의 저장 내용이 지금 게임과 맞지 않아요. ${opts.mode==='teacher'?'[다른 방 열기]에서 새 수업 방을 만들어 주세요.':'새로고침해 보고, 계속되면 선생님께 말씀해 주세요.'}</p>${opts.mode==='teacher'?'<div class="row" style="margin-top:12px"><button class="btn accent small" data-a="rooms">다른 방 열기</button></div>':''}</section>`;}
   const bars=main.querySelectorAll('.bar>i[data-k]');
   bars.forEach(el=>{if(prev[el.dataset.k]!==undefined){el.style.transition='none';el.style.width=prev[el.dataset.k]}});
   void main.offsetWidth;
