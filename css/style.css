@@ -271,3 +271,23 @@ html,body{margin:0}
 .letter.incoming{border-left:5px solid var(--nc)}
 .badge{display:inline-grid;place-items:center;min-width:24px;height:24px;border-radius:999px;background:var(--warn);color:#fff;font-size:14px;padding:0 6px;vertical-align:middle}
 @media (max-width:700px){.isle{min-width:0;font-size:10px;padding:3px 5px}.isle-hd{font-size:11px}.isle-inv small{display:none}.dpad{grid-template-columns:repeat(3,48px);grid-template-rows:repeat(3,48px)}}
+
+/* ---------- 도우미 갈매기 (오른쪽 아래) ---------- */
+.helper{position:fixed;right:calc(16px + env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:55;display:flex;flex-direction:column;align-items:flex-end;gap:10px;pointer-events:none}
+.helper>*{pointer-events:auto}
+.helper-btn{width:64px;height:64px;padding:0;border:3px solid var(--surface);border-radius:50%;background:var(--surface);cursor:pointer;box-shadow:0 4px 14px rgba(20,32,44,.25);overflow:hidden;position:relative;transition:transform .15s ease-out}
+.helper-btn:hover{transform:scale(1.06)}
+.helper-btn:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.helper-btn svg{display:block}
+.helper-btn.new::after{content:"";position:absolute;top:4px;right:4px;width:14px;height:14px;border-radius:50%;background:var(--warn);border:2px solid var(--surface)}
+.helper-btn.new{animation:helper-nudge 1.6s ease-in-out 2}
+@keyframes helper-nudge{0%,100%{transform:rotate(0)}15%{transform:rotate(-10deg)}30%{transform:rotate(8deg)}45%{transform:rotate(0)}}
+.helper-bubble{position:relative;max-width:min(320px,calc(100vw - 32px));background:var(--surface);color:var(--ink);border:2px solid var(--ink);border-radius:16px;padding:12px 38px 12px 14px;box-shadow:0 8px 28px rgba(20,32,44,.22);animation:helper-pop .18s ease-out}
+.helper-bubble::after{content:"";position:absolute;right:24px;bottom:-11px;width:18px;height:18px;background:var(--surface);border-right:2px solid var(--ink);border-bottom:2px solid var(--ink);transform:rotate(45deg)}
+.helper-bubble p{margin:0;font-size:16px;line-height:1.5}
+.helper-name{font-family:var(--f-display);font-size:15px;color:var(--accent);margin-bottom:2px}
+.helper-x{position:absolute;top:6px;right:6px;width:30px;height:30px;border:0;border-radius:8px;background:transparent;font-size:20px;line-height:1;cursor:pointer;color:var(--muted)}
+.helper-x:hover{background:var(--surface-2)}
+@keyframes helper-pop{from{opacity:0;transform:translateY(6px) scale(.97)}to{opacity:1;transform:none}}
+main{padding-bottom:110px}
+@media (max-width:560px){.helper-btn{width:54px;height:54px}}

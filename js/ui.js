@@ -391,6 +391,80 @@ function projectorView(){
 
 /* ---------- 렌더링 ---------- */
 function editing(){const ae=document.activeElement;return ae&&ae.closest&&ae.closest('#main')&&(ae.tagName==='INPUT'&&ae.type!=='checkbox'||ae.tagName==='TEXTAREA'||ae.tagName==='SELECT')}
+
+/* ---------- 도우미 갈매기 (오른쪽 아래 힌트) ----------
+ * 지금 단계와 우리 나라 상황을 보고 '무엇을 하면 되는지'만 알려 줍니다.
+ * 1·2차 실험의 전략(특화·교환)은 미리 알려 주지 않습니다. */
+const HELPER_NAME='갈매기 선장';
+const HELPER_SVG=`<svg viewBox="0 0 64 64" width="100%" height="100%" aria-hidden="true">
+ <circle cx="32" cy="32" r="32" fill="#bfe3f2"/><path d="M0 44c8-4 14-4 22 0s14 4 22 0 14-4 20 0v20H0z" fill="#3d9bc4"/>
+ <ellipse cx="32" cy="46" rx="15" ry="11" fill="#fff"/><path d="M18 44c-5-2-9 0-11 4 5 0 8 1 11 0z" fill="#d7e1e8"/><path d="M46 44c5-2 9 0 11 4-5 0-8 1-11 0z" fill="#d7e1e8"/>
+ <circle cx="32" cy="31" r="13" fill="#fff"/>
+ <path d="M30 34l14 3-14 3z" fill="#f2a33a"/><path d="M30 37l14 0-14 3z" fill="#d9832a"/>
+ <circle cx="27" cy="29" r="2.6" fill="#14202c"/><circle cx="27.8" cy="28.2" r=".9" fill="#fff"/>
+ <circle cx="23" cy="34" r="2.2" fill="#f6b4b4" opacity=".7"/>
+ <path d="M17 21c2-7 9-10 15-10s13 3 15 10z" fill="#1f3a5f"/><rect x="15" y="20" width="34" height="5" rx="2.5" fill="#fff"/><path d="M15 23h34" stroke="#1f3a5f" stroke-width="1.2"/>
+ <path d="M32 13.5l1.4 2.8 3 .4-2.2 2.1.5 3-2.7-1.4-2.7 1.4.5-3-2.2-2.1 3-.4z" fill="#f2c94c"/>
+ <path d="M26 54l-2 6M38 54l2 6" stroke="#f2a33a" stroke-width="2.4" stroke-linecap="round"/></svg>`;
+const listNames=(ids)=>ids.map(id=>I(id).name).join(', ');
+function helperHint(){
+  if(!S||!cfg)return null;
+  const st=S.stage;
+  if(view==='projector')return null;
+  if(view==='teacher'){
+    const r2=st===5?L.round2Progress(S,cfg).filter(x=>!x.ok):[];
+    const T={1:'국가 정보를 함께 살펴본 뒤 [다음 단계 ▶]를 누르면 1차 생산이 시작돼요.',
+      2:'학생들이 4번씩 생산하는 동안 아래 나라별 현황에서 확보율을 지켜보세요. 다 끝나면 [다음 단계 ▶].',
+      3:'다음 단계로 넘어가면 1차 결과가 저장되고 창고와 생산 기회가 처음으로 돌아가요.',
+      5:r2.length?`아직 생산 중인 나라: ${r2.map(x=>`${x.name} ${x.done}/${x.need}`).join(', ')}. 모두 끝나야 다음 단계로 갈 수 있어요.`:'네 나라 모두 생산을 마쳤어요. [다음 단계 ▶]로 무역을 시작하세요.',
+      6:S.trades.some(t=>t.status==='pending')?'수락을 기다리는 거래가 있어요. 잘못된 거래는 거래 기록에서 [무효 처리]나 [거래 취소]를 할 수 있어요.':'학생들이 배를 몰아 다른 나라 항구에서 거래를 요청해요. 거래 기록이 여기에 쌓입니다.',
+      7:'발표 화면 탭으로 1차·2차 결과와 무역 흐름을 함께 보며 이야기를 나눠 보세요.'};
+    return T[st]||null;
+  }
+  const cid=view;const c=C(cid);if(!c)return null;
+  const my=cst(cid);const sec=L.security(cfg,my.inv);
+  const lacking=cfg.items.filter(it=>sec.per[it.id]<100).map(it=>it.id);
+  if(st===1)return '우리 나라는 물품마다 한 번에 만들 수 있는 양이 달라요. 아래 표에서 우리 나라와 다른 나라를 비교해 보세요.';
+  if(st===2||st===5){
+    const why=L.canProduce(S);if(why)return why;
+    if(st===5){
+      const sp=L.specialties(cfg,cid).map(id=>I(id).name).join(', ');
+      return my.chances>0?`이번에는 우리 나라가 가장 잘 만드는 물품(${sp})만 만들 수 있어요. 생산 기회가 ${my.chances}번 남았어요.`:'생산을 모두 마쳤어요! 다른 나라도 끝나면 선생님이 무역을 시작해 줄 거예요.';
+    }
+    if(my.chances===cfg.chances)return `물품 아래의 [생산하기] 버튼을 눌러 보세요. 생산 기회는 ${cfg.chances}번이에요. 막대가 끝까지 차면 그 물품은 100%예요.`;
+    if(my.chances>0)return `생산 기회가 ${my.chances}번 남았어요. 아직 부족한 물품: ${listNames(lacking)||'없음'}.`;
+    return `생산 기회를 모두 썼어요. 종합 확보율은 ${pct(sec.overall)}예요. 왜 100%가 되지 않았는지 생각해 보세요.`;
+  }
+  if(st===3)return '1차 결과에서 100%가 된 물품과 부족한 물품을 찾아 학습지에 적어 보세요. 아래 생산량 표도 함께 보세요.';
+  if(st===6){
+    const why=L.canTrade(S);if(why)return why;
+    const inc=S.trades.filter(t=>t.status==='pending'&&t.to===cid);
+    if(inc.length)return `${C(inc[0].from).name}에서 거래 요청이 왔어요! 아래 [거래 요청함]에서 내용을 확인하고 [수락하기]를 눌러 주세요.`;
+    if(!lacking.length)return '네 물품 모두 100%예요! 다른 나라에서 요청이 오면 수락해서 도와줄 수 있어요.';
+    const sh=shipOf(cid);
+    if(sh.dock&&sh.dock!==cid){
+      const T=C(sh.dock);
+      if(S.trades.some(t=>t.status==='pending'&&t.from===cid&&t.to===sh.dock))return `${T.name}에 요청을 보냈어요. ${T.name}이 수락할 때까지 기다리거나, 다른 나라 항구에도 가 보세요.`;
+      return `${T.name} 항구에 도착했어요. 우리가 줄 물품과 받을 물품을 고른 뒤 [거래 요청 보내기]를 눌러 보세요.`;
+    }
+    const sent=S.trades.filter(t=>t.status==='pending'&&t.from===cid);
+    return `아직 부족한 물품: ${listNames(lacking)}. 방향키로 배를 몰아 그 물품을 가진 나라의 항구로 가 보세요.${sent.length?` (${sent.map(t=>C(t.to).name).join(', ')}에 보낸 요청은 기다리는 중)`:''}`;
+  }
+  if(st===7)return '1차와 2차 결과를 비교해 보세요. 무엇이 달라졌고, 왜 달라졌을까요?';
+  return null;
+}
+function renderHelper(){
+  let root=document.getElementById('helper-root');
+  if(!root){root=document.createElement('div');root.id='helper-root';document.body.appendChild(root);}
+  const hint=helperHint();
+  if(!hint){root.innerHTML='';ui.helperOpen=false;return}
+  const fresh=ui.helperLast!==undefined&&hint!==ui.helperLast&&!ui.helperOpen;
+  if(fresh)ui.helperNew=true;
+  ui.helperLast=hint;
+  root.innerHTML=`<div class="helper${ui.helperOpen?' open':''}">
+    ${ui.helperOpen?`<div class="helper-bubble" role="status" id="helper-bubble"><div class="helper-name">${esc(HELPER_NAME)}</div><p>${esc(hint)}</p><button class="helper-x" data-a="helper-close" aria-label="힌트 닫기">×</button></div>`:''}
+    <button class="helper-btn${ui.helperNew?' new':''}" data-a="helper" aria-expanded="${!!ui.helperOpen}" aria-label="${esc(HELPER_NAME)}에게 힌트 듣기" title="힌트 보기">${HELPER_SVG}</button></div>`;
+}
 function render(force){
   if(!S||!cfg)return;
   if(!force&&editing()){ui.deferred=true;renderTop();return}
@@ -408,6 +482,7 @@ function render(force){
   if(Math.abs(window.scrollY-sy)>2)window.scrollTo(0,sy);
   ui.pop=null;
   if(S.stage===6&&C(view))notifyIncoming(view);
+  renderHelper();
   const d=document.getElementById('cfg-details');if(d)d.addEventListener('toggle',()=>{if(ui.cfgOpen!==d.open){ui.cfgOpen=d.open;render(true)}});
 }
 function setView(v){view=v;try{history.replaceState(null,'','#'+v)}catch(e){}store.set('tradeGame.view.'+opts.mode,v);render(true);window.scrollTo(0,0)}
@@ -424,6 +499,8 @@ function onClick(e){
   const b=e.target.closest('[data-a]');if(!b||b.disabled)return;const a=b.dataset.a,cid=b.dataset.c;const B=opts.backend;
   if(a==='modal-no'){ui.modal=null;return renderModal()}
   if(a==='modal-yes'){const m=ui.modal;ui.modal=null;renderModal();return m.onOk()}
+  if(a==='helper'){ui.helperOpen=!ui.helperOpen;ui.helperNew=false;return renderHelper()}
+  if(a==='helper-close'){ui.helperOpen=false;renderHelper();const hb=document.querySelector('.helper-btn');if(hb)hb.focus();return}
   if(opts.onAction&&opts.onAction(a,b))return;
   if(!B||!S)return;
   if(a==='view')return setView(b.dataset.v);
@@ -475,7 +552,7 @@ const TradeUI={
 };
 document.addEventListener('click',onClick);
 document.addEventListener('change',onChange);
-document.addEventListener('keydown',(e)=>{if(e.key==='Escape'&&ui.modal){ui.modal=null;renderModal()}});
+document.addEventListener('keydown',(e)=>{if(e.key==='Escape'&&ui.modal){ui.modal=null;renderModal()}else if(e.key==='Escape'&&ui.helperOpen){ui.helperOpen=false;renderHelper()}});
 document.addEventListener('focusout',()=>{setTimeout(()=>{if(ui.deferred&&!editing())render(true)},0)});
 root.TradeUI=TradeUI;
 })(window);
