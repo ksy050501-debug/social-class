@@ -1,8 +1,10 @@
 rules_version = '2';
 
 // =========================================================
-// 무역의 발견 — Firestore 보안 규칙
+// 무역의 발견 + 무역 탐험대 훈련소 — Firestore 보안 규칙 (두 앱이 한 프로젝트를 함께 씀)
 // Firebase 콘솔 → Firestore Database → 규칙 탭에 이 파일 내용을 그대로 붙여 넣고 [게시]하세요.
+//  - /rooms/...          본 수업 「무역의 발견」 (social-class 저장소의 규칙과 같은 내용)
+//  - /practiceRooms/...  연습 앱 「무역 탐험대 훈련소」
 //
 // 원칙
 //  - 교사: 구글 계정으로 로그인해 방을 만든 사람(ownerUid)만 단계 변경·잠금·취소·초기화 가능
@@ -171,6 +173,170 @@ service cloud.firestore {
           && request.resource.data.keys().hasOnly(['cid'])
           && getAfter(sp(code, request.resource.data.cid)).data.uid == uid;
         allow delete: if isTeacher(code);
+      }
+    }
+    // =====================================================
+    // 무역 탐험대 훈련소 (연습 앱) — /practiceRooms/...
+    // 단계: 1 입장, 2 생산 연습, 3 항해 연습, 4 거래 연습, 5 확인 퀴즈
+    // =====================================================
+    function prp(code) { return /databases/$(database)/documents/practiceRooms/$(code); }
+    function pcp(code, cid) { return /databases/$(database)/documents/practiceRooms/$(code)/countries/$(cid); }
+    function ptp(code, tid) { return /databases/$(database)/documents/practiceRooms/$(code)/trades/$(tid); }
+    function psp(code, cid) { return /databases/$(database)/documents/practiceRooms/$(code)/seats/$(cid); }
+    function pmp(code, uid) { return /databases/$(database)/documents/practiceRooms/$(code)/members/$(uid); }
+    function proom(code) { return get(prp(code)).data; }
+    function pTeacher(code) { return signedIn() && proom(code).ownerUid == request.auth.uid; }
+    function pHolds(code, cid) { return signedIn() && exists(psp(code, cid)) && get(psp(code, cid)).data.uid == request.auth.uid; }
+    function pCanProduce(r) { return r.stage == 2 && r.locks.production == false; }
+    function pCanTrade(r) { return r.stage == 4 && r.locks.trade == false; }
+
+    function pProduceOk(code, cid, item) {
+      let r = proom(code);
+      let o = resource.data;
+      let n = request.resource.data;
+      let amt = r.outputs[cid][item];
+      let k = o.log.size();
+      return pCanProduce(r)
+        && o.chances > 0 && n.chances == o.chances - 1
+        && n.inv.diff(o.inv).affectedKeys().hasOnly([item])
+        && n.inv[item] == o.inv[item] + amt
+        && n.log.size() == k + 1 && n.log[0:k] == o.log
+        && n.log[k].item == item && n.log[k].amount == amt && n.log[k].round == 1
+        && n.diff(o).affectedKeys().hasOnly(['inv', 'chances', 'log', 'op']);
+    }
+    function pUndoOk(code) {
+      let r = proom(code);
+      let o = resource.data;
+      let n = request.resource.data;
+      let k = o.log.size() - 1;
+      let last = o.log[k];
+      return r.allowUndo == true && pCanProduce(r)
+        && n.log == o.log[0:k]
+        && n.chances == o.chances + 1
+        && n.undos == o.undos + 1
+        && n.inv.diff(o.inv).affectedKeys().hasOnly([last.item])
+        && n.inv[last.item] == o.inv[last.item] - last.amount
+        && n.inv[last.item] >= 0
+        && n.diff(o).affectedKeys().hasOnly(['inv', 'chances', 'log', 'undos', 'op']);
+    }
+    function pVisitOk(code) {
+      let o = resource.data;
+      let n = request.resource.data;
+      let k = o.visits.size();
+      return proom(code).stage == 3
+        && k < 40 && n.visits.size() == k + 1 && n.visits[0:k] == o.visits
+        && n.visits[k] == n.op.port && exists(pcp(code, n.op.port))
+        && n.diff(o).affectedKeys().hasOnly(['visits', 'op']);
+    }
+    function pQuizOk(code) {
+      let o = resource.data;
+      let n = request.resource.data;
+      let qid = n.op.q;
+      return proom(code).stage == 5
+        && qid in ['q1', 'q2', 'q3', 'q4'] && !(qid in o.quiz)
+        && n.quiz.diff(o.quiz).affectedKeys().hasOnly([qid])
+        && n.quiz[qid] is int && n.quiz[qid] >= 0 && n.quiz[qid] <= 2
+        && n.diff(o).affectedKeys().hasOnly(['quiz', 'op']);
+    }
+    function pTradeSideOk(code, cid, tid) {
+      let before = get(ptp(code, tid)).data;
+      let after = getAfter(ptp(code, tid)).data;
+      let o = resource.data;
+      let n = request.resource.data;
+      let gi = before.give.item;
+      let gq = before.give.qty;
+      let ti = before.get.item;
+      let tq = before.get.qty;
+      return pHolds(code, before.to) && pCanTrade(proom(code))
+        && before.status == 'pending' && after.status == 'done'
+        && (cid == before.from || cid == before.to)
+        && n.inv.diff(o.inv).affectedKeys().hasOnly([gi, ti])
+        && (cid == before.from
+              ? (n.inv[gi] == o.inv[gi] - gq && n.inv[ti] == o.inv[ti] + tq)
+              : (n.inv[gi] == o.inv[gi] + gq && n.inv[ti] == o.inv[ti] - tq))
+        && n.inv[gi] >= 0 && n.inv[ti] >= 0
+        && n.diff(o).affectedKeys().hasOnly(['inv', 'op']);
+    }
+    function pStudentCountryUpdate(code, cid) {
+      let kind = request.resource.data.op.kind;
+      return (kind == 'trade' && pTradeSideOk(code, cid, request.resource.data.op.tid))
+        || (pHolds(code, cid) && (
+              (kind == 'produce' && pProduceOk(code, cid, request.resource.data.op.item))
+           || (kind == 'undo' && resource.data.log.size() > 0 && pUndoOk(code))
+           || (kind == 'visit' && pVisitOk(code))
+           || (kind == 'quiz' && pQuizOk(code))));
+    }
+    function pProposeOk(code) {
+      let t = request.resource.data;
+      let r = proom(code);
+      return pCanTrade(r)
+        && t.status == 'pending' && t.by == request.auth.uid
+        && t.from != t.to && exists(pcp(code, t.to))
+        && t.give.item in r.units && t.get.item in r.units
+        && t.give.item != t.get.item
+        && t.give.qty is int && t.give.qty == r.units[t.give.item]
+        && t.get.qty is int && t.get.qty == r.units[t.get.item]
+        && t.give.keys().hasOnly(['item', 'qty']) && t.get.keys().hasOnly(['item', 'qty'])
+        && get(pcp(code, t.from)).data.inv[t.give.item] >= t.give.qty
+        && t.keys().hasOnly(['from', 'to', 'give', 'get', 'status', 'createdAt', 'by']);
+    }
+    function pAcceptOk(code, tid) {
+      let o = resource.data;
+      let n = request.resource.data;
+      return o.status == 'pending' && n.status == 'done' && pHolds(code, o.to)
+        && pCanTrade(proom(code))
+        && n.diff(o).affectedKeys().hasOnly(['status', 'doneAt'])
+        && getAfter(pcp(code, o.from)).data.op.tid == tid
+        && getAfter(pcp(code, o.to)).data.op.tid == tid;
+    }
+    function pWithdrawOk(code) {
+      let o = resource.data;
+      let n = request.resource.data;
+      return o.status == 'pending'
+        && n.diff(o).affectedKeys().hasOnly(['status'])
+        && n.status == 'withdrawn' && pHolds(code, o.from);
+    }
+
+    match /practiceRooms/{code} {
+      allow get: if signedIn();
+      allow list: if signedIn() && resource.data.ownerUid == request.auth.uid;
+      allow create: if signedIn()
+        && request.auth.token.firebase.sign_in_provider == 'google.com'
+        && request.resource.data.ownerUid == request.auth.uid;
+      allow update: if signedIn() && resource.data.ownerUid == request.auth.uid
+        && request.resource.data.ownerUid == resource.data.ownerUid;
+      allow delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
+
+      match /countries/{cid} {
+        allow read: if signedIn();
+        allow create, delete: if pTeacher(code);
+        allow update: if pTeacher(code) || pStudentCountryUpdate(code, cid);
+      }
+      match /trades/{tid} {
+        allow read: if signedIn();
+        allow create: if signedIn() && (pHolds(code, request.resource.data.from) || pTeacher(code)) && pProposeOk(code);
+        allow update: if pTeacher(code) || pAcceptOk(code, tid) || pWithdrawOk(code);
+        allow delete: if pTeacher(code);
+      }
+      match /seats/{cid} {
+        allow read: if signedIn();
+        allow create: if signedIn()
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.keys().hasOnly(['uid', 'joinedAt', 'lastSeen'])
+          && exists(pcp(code, cid))
+          && !exists(pmp(code, request.auth.uid))
+          && getAfter(pmp(code, request.auth.uid)).data.cid == cid;
+        allow update: if signedIn() && resource.data.uid == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastSeen']);
+        allow delete: if pTeacher(code);
+      }
+      match /members/{uid} {
+        allow get: if signedIn() && (request.auth.uid == uid || pTeacher(code));
+        allow list: if pTeacher(code);
+        allow create: if signedIn() && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['cid'])
+          && getAfter(psp(code, request.resource.data.cid)).data.uid == uid;
+        allow delete: if pTeacher(code);
       }
     }
   }
