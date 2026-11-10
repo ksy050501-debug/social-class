@@ -393,7 +393,10 @@ function projectorView(){
   const cards=cfg.countries.map(c=>{const d=data(c.id),sec=L.security(cfg,d.inv);const r1=S.round1&&S.stage>=7?L.security(cfg,r1Data(c.id).inv).overall:null;
     return `<div class="ncard" style="--nc:${esc(c.color)}"><div class="hd">${flag(c,40)}<h3>${esc(c.name)}</h3><b class="num" style="margin-left:auto;font-size:27px">${r1!==null?`<span class="muted" style="font-size:19px">${pct(r1)} →</span> `:''}${pct(sec.overall)}</b></div>
      <div class="mini">${cfg.items.map(it=>`${itemIcon(it.id,24)}${bar('p-'+c.id+it.id,sec.per[it.id],itemColor(it.id))}<span class="num">${pct(sec.per[it.id])}</span>`).join('')}</div></div>`}).join('');
-  return `<div class="proj"><div class="hero"><div class="row" style="justify-content:space-between"><span style="opacity:.7">${L.stageNo(S.stage)}단계</span>${document.fullscreenEnabled?`<button class="btn ghost small" data-a="fullscreen" style="color:var(--bg);box-shadow:inset 0 0 0 1.5px currentColor">전체 화면</button>`:''}</div><h2>${esc(st.title)}</h2></div>
+  const r2=S.stage===5?L.round2Progress(S,cfg):null,r2wait=!!(r2&&r2.some(x=>!x.ok));
+  const pv=L.nextStage(S.stage,-1),nx=L.nextStage(S.stage,1),fs=!!document.fullscreenElement;
+  const nav=opts.mode==='student'?'':`<div class="proj-nav"><button class="btn ghost" data-a="stage" data-n="${pv}" data-nav="prev" ${pv?'':'disabled'}>◀ 이전 단계</button><button class="btn accent" data-a="stage" data-n="${nx}" data-nav="next" ${nx&&!r2wait?'':'disabled'}>다음 단계 ▶</button>${document.fullscreenEnabled?`<button class="btn ghost" data-a="fullscreen">${fs?'전체 화면 끝내기':'전체 화면'}</button>`:''}</div>`;
+  return `<div class="proj"><div class="hero"><div class="row" style="justify-content:space-between;align-items:center"><span style="opacity:.7">${L.stageNo(S.stage)}단계${r2wait?' · 아직 생산 중인 나라가 있어요':''}</span>${nav}</div><h2>${esc(st.title)}</h2></div>
    <section class="panel"><div class="together"><div><div class="label">${showR1?'1차 실험 · ':''}네 나라가 함께 확보한 국민 생활 물품</div><div class="v num">${pct(avg)}</div></div>
      <div style="flex:1;min-width:200px">${bar('p-avg',avg,'var(--accent)',true)}${avg1!==null&&S.stage>=7?`<p class="muted" style="margin:8px 0 0">1차 자급자족 때는 <b class="num">${pct(avg1)}</b>였어요.</p>`:''}</div></div></section>
    <section class="nations">${cards}</section>
@@ -518,7 +521,7 @@ function onClick(e){
   if(a==='view')return setView(b.dataset.v);
   if(a==='modal-no'){ui.modal=null;return renderModal()}
   if(a==='modal-yes'){const m=ui.modal;ui.modal=null;renderModal();return m.onOk()}
-  if(a==='fullscreen'){try{document.documentElement.requestFullscreen().catch(()=>{})}catch(err){}return}
+  if(a==='fullscreen'){try{(document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen()).catch(()=>{})}catch(err){}return}
   if(a==='produce'){
     const item=b.dataset.i;
     if(S.stage===5&&!L.specialties(cfg,cid).includes(item)){const sp=L.specialties(cfg,cid).map(i=>I(i).name).join('·');
@@ -564,6 +567,11 @@ const TradeUI={
 };
 document.addEventListener('click',onClick);
 document.addEventListener('change',onChange);
+document.addEventListener('fullscreenchange',()=>{if(S&&cfg)render(true)});
+// 발표 화면: 프레젠터(→·PageDown 다음, ←·PageUp 이전)로 단계 이동. 확인 창은 버튼과 똑같이 뜹니다.
+document.addEventListener('keydown',(e)=>{if(view!=='projector'||ui.modal||e.repeat)return;if(e.target.closest&&e.target.closest('input,textarea,select'))return;
+  const dir={PageDown:'next',ArrowRight:'next',PageUp:'prev',ArrowLeft:'prev'}[e.key];if(!dir)return;
+  const b=document.querySelector(`.proj-nav [data-nav="${dir}"]`);if(b&&!b.disabled){e.preventDefault();b.click()}});
 document.addEventListener('keydown',(e)=>{if(e.key==='Escape'&&ui.modal){ui.modal=null;renderModal()}else if(e.key==='Escape'&&ui.helperOpen){ui.helperOpen=false;renderHelper()}});
 document.addEventListener('focusout',()=>{setTimeout(()=>{if(ui.deferred&&!editing())render(true)},0)});
 root.TradeUI=TradeUI;
