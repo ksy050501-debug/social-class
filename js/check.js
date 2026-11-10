@@ -101,9 +101,9 @@ async function start() {
 
     const total0 = L.totals({ countries: Object.fromEntries(await Promise.all(IDS.map(async (id) => [id, await inv(id)]))) }, cfg);
     const p1 = await B.gaon.propose('gaon', 'narae', ...deal('gaon', 'narae'));
-    log(!!(p1 && p1.ok), `가온국: 나래국에 쌀 ${U.rice}만 톤 ↔ 석유 ${U.oil}만 톤 거래 요청`);
+    log(!!(p1 && p1.ok), `가온국: 나온국에 쌀 ${U.rice}만 톤 ↔ 석유 ${U.oil}만 톤 거래 요청`);
     await expectDenied('정해진 거래량을 바꾼 요청은 만들 수 없음', fs.setDoc(fs.doc(R('daon').trades), { from: 'daon', to: 'raon', give: { item: 'car', qty: U.car * 3 }, get: { item: 'phone', qty: U.phone }, status: 'pending', createdAt: fs.serverTimestamp(), by: st.daon.uid }));
-    await expectDenied('요청을 받은 나라(나래국)는 거절할 수 없음', fs.updateDoc(R('narae').trade(p1.id), { status: 'rejected' }));
+    await expectDenied('요청을 받은 나라(나온국)는 거절할 수 없음', fs.updateDoc(R('narae').trade(p1.id), { status: 'rejected' }));
     await expectDenied('요청을 받지 않은 나라(다온국)는 대신 수락할 수 없음', fs.runTransaction(st.daon.ctx.db, async (t) => {
       const a = await t.get(R('daon').country('gaon')), b = await t.get(R('daon').country('narae'));
       const ai = a.data().inv, bi = b.data().inv;
@@ -118,7 +118,7 @@ async function start() {
       t.update(R('narae').country('gaon'), { inv: Object.assign({}, ai, { rice: ai.rice - U.rice, oil: ai.oil + 1 }), op: { kind: 'trade', tid: p1.id } });
       t.update(R('narae').country('narae'), { inv: Object.assign({}, bi, { rice: bi.rice + U.rice, oil: bi.oil - 1 }), op: { kind: 'trade', tid: p1.id } });
     }));
-    await expectOk('나래국: 요청 수락', B.narae.accept('narae', p1.id));
+    await expectOk('나온국: 요청 수락', B.narae.accept('narae', p1.id));
     await expectFail('이미 성립한 거래를 다시 수락해도 반영되지 않음', B.narae.accept('narae', p1.id));
 
     // 동시 수락 경쟁: 교사가 가온국 쌀을 거래 한 번 분량만 남겨 둔 뒤 두 나라에 동시에 요청
@@ -136,7 +136,7 @@ async function start() {
     for (const x of [pa.id, pb.id].filter((x) => x !== doneId)) await TB.cancelTrade(x).catch(() => {});
     await fs.updateDoc(roomRefs(fs, T.ctx.db, code).country('gaon'), { inv: gBefore.inv, op: { kind: 'teacher-test' } });
 
-    // 남은 거래로 네 나라 모두 100%: 나라 쌍마다 목표량의 절반씩 두 번 (가온-나래는 한 번 남음)
+    // 남은 거래로 네 나라 모두 100%: 나라 쌍마다 목표량의 절반씩 두 번 (가온-나온는 한 번 남음)
     const pairs = [['gaon', 'narae', 1], ['gaon', 'daon', 2], ['gaon', 'raon', 2], ['narae', 'daon', 2], ['narae', 'raon', 2], ['daon', 'raon', 2]];
     for (const [a, b, n] of pairs) for (let k = 0; k < n; k++) {
       const p = await B[a].propose(a, b, ...deal(a, b));

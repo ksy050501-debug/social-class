@@ -109,7 +109,7 @@ async def main():
             await S['narae'].reload(); await S['narae'].wait_for_selector('.nation h2')
             nm = await S['narae'].inner_text('.nation h2')
             chips = await S['narae'].locator('.big.num').inner_text()
-            check('학생 새로고침 → 같은 나라, 같은 확보율로 이어짐', nm.strip() == '나래국' and chips.replace('\n', '').startswith('43.75'), f'{nm.strip()} {chips!r}')
+            check('학생 새로고침 → 같은 나라, 같은 확보율로 이어짐', nm.strip() == '나온국' and chips.replace('\n', '').startswith('43.75'), f'{nm.strip()} {chips!r}')
             await S['daon'].screenshot(path=f'{SHOTS}/s2-round1.png', full_page=True)
 
             await stage(3)
@@ -143,7 +143,7 @@ async def main():
                 await S[bb].wait_for_selector('.letter.incoming [data-a=accept]:not([disabled])')
                 await S[bb].click('.letter.incoming [data-a=accept]'); await asyncio.sleep(0.5)
 
-            # 실제 방향키 항해: 가온국 항구에서 오른쪽으로 쭉 가면 나래국 항구
+            # 실제 방향키 항해: 가온국 항구에서 오른쪽으로 쭉 가면 나온국 항구
             await S['gaon'].bring_to_front()
             await S['gaon'].wait_for_selector('#sea')
             await S['gaon'].keyboard.down('ArrowRight'); await asyncio.sleep(2.4); await S['gaon'].keyboard.up('ArrowRight')
@@ -172,7 +172,7 @@ async def main():
             while await T.locator('[data-a=t-cancel]').count():
                 await T.click('[data-a=t-cancel] >> nth=0'); await asyncio.sleep(0.5)
 
-            # 나라 쌍마다 두 번씩 (가온-나래는 한 번 남음) → 네 나라 모두 100%
+            # 나라 쌍마다 두 번씩 (가온-나온는 한 번 남음) → 네 나라 모두 100%
             for a, bb, n in [('gaon', 'narae', 1), ('gaon', 'daon', 2), ('gaon', 'raon', 2), ('narae', 'daon', 2), ('narae', 'raon', 2), ('daon', 'raon', 2)]:
                 for _ in range(n):
                     await sail(a, bb); await request(a, bb, SPEC[a], SPEC[bb]); await accept(bb)

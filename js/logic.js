@@ -22,14 +22,14 @@
     // key: 이 물품을 만들 때 가장 중요한 생산 조건
     // target: 한 나라 국민이 1년 동안 쓰는 양 (단위는 '만 톤'과 '만 대' 두 가지로만)
     items: [
-      { id: 'rice',  name: '쌀',     unit: '만 톤',   target: 400,  key: 'labor'    },
-      { id: 'oil',   name: '석유',   unit: '만 톤',   target: 800,  key: 'resource' },
-      { id: 'car',   name: '자동차', unit: '만 대',   target: 160,  key: 'capital'  },
-      { id: 'phone', name: '스마트폰', unit: '만 대', target: 1600, key: 'tech'     }
+      { id: 'rice',  name: '쌀',     unit: '만 톤',   target: 400,  key: 'labor', good: '비가 많이 오고 일 년 내내 따뜻해서 벼가 무럭무럭 자라요. 논에서 일할 사람도 많아요.', poor: '벼가 자라기에는 비가 적거나 날씨가 서늘하고, 논에서 일할 사람도 적어요.' },
+      { id: 'oil',   name: '석유',   unit: '만 톤',   target: 800,  key: 'resource', good: '땅속 깊은 곳에 석유가 가득 묻혀 있어서 퍼 올리기만 하면 돼요.', poor: '땅속에 묻혀 있는 석유가 아주 조금뿐이에요.' },
+      { id: 'car',   name: '자동차', unit: '만 대',   target: 160,  key: 'capital', good: '크고 넓은 공장과 자동차를 조립하는 기계가 많아요.', poor: '자동차를 만들 큰 공장과 기계가 부족해요.' },
+      { id: 'phone', name: '스마트폰', unit: '만 대', target: 1600, key: 'tech', good: '뛰어난 기술자와 연구소가 많아서 작고 정교한 부품도 잘 만들어요.', poor: '작고 정교한 부품을 만드는 기술이 아직 부족해요.' }
     ],
     countries: [
       { id: 'gaon', name: '가온국', color: '#d93a3a', flag: 'solid',  stats: { capital: 2, resource: 3, labor: 5, tech: 1 } },
-      { id: 'narae', name: '나래국', color: '#ee8a1c', flag: 'solid',   stats: { capital: 3, resource: 5, labor: 1, tech: 2 } },
+      { id: 'narae', name: '나온국', color: '#ee8a1c', flag: 'solid',   stats: { capital: 3, resource: 5, labor: 1, tech: 2 } },
       { id: 'daon', name: '다온국', color: '#f2c12e', flag: 'solid',    stats: { capital: 5, resource: 1, labor: 4, tech: 3 } },
       { id: 'raon', name: '라온국', color: '#2f9e4f', flag: 'solid', stats: { capital: 4, resource: 1, labor: 2, tech: 5 } }
     ]

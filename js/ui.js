@@ -28,7 +28,7 @@ const itemIcon=(id,s)=>(ICON_ITEM[id]||((z)=>`<svg width="${z}" height="${z}" vi
 const NEW_COL={gaon:'#d93a3a',narae:'#ee8a1c',daon:'#f2c12e',raon:'#2f9e4f'};
 const OLD_COL=['#2f6fdb','#d9622b','#13917f','#8e44b8'];
 // 예전 기본 색으로 만든 방도 새 색으로 보이게 함 (교사가 직접 바꾼 색은 그대로)
-function migrateCfg(c){if(!c||!c.countries)return c;c=JSON.parse(JSON.stringify(c));c.countries.forEach(x=>{if(OLD_COL.includes(String(x.color).toLowerCase())&&NEW_COL[x.id])x.color=NEW_COL[x.id];x.flag='solid'});return c}
+function migrateCfg(c){if(!c||!c.countries)return c;c=JSON.parse(JSON.stringify(c));c.countries.forEach(x=>{if(OLD_COL.includes(String(x.color).toLowerCase())&&NEW_COL[x.id])x.color=NEW_COL[x.id];x.flag='solid';if(x.name==='나래국')x.name='나온국'});return c}
 // 나라 색 위에 쓰는 글자색 (노랑처럼 밝은 색이면 어두운 글자)
 function ink(col){const m=/^#?([0-9a-f]{6})$/i.exec(String(col||''));if(!m)return '#fff';const n=parseInt(m[1],16),r=n>>16&255,g=n>>8&255,b=n&255;return (0.299*r+0.587*g+0.114*b)>165?'#14202c':'#fff'}
 function flag(c,w){
@@ -62,7 +62,7 @@ function netError(e){
 }
 function ask(title,body,okLabel,onOk,danger,single){ui.modal={title,body,okLabel,onOk,danger,single};renderModal()}
 function renderModal(){const r=document.getElementById('modal-root');if(!r)return;if(!ui.modal){r.innerHTML='';return}
-  const m=ui.modal;r.innerHTML=`<div class="modal" role="dialog" aria-modal="true" aria-labelledby="mt"><div class="box"><h2 id="mt" style="font-size:22px">${esc(m.title)}</h2><div>${m.body}</div><div class="row" style="justify-content:flex-end">${m.single?'':'<button class="btn ghost small" data-a="modal-no">취소</button>'}<button class="btn small ${m.danger?'warn':'accent'}" data-a="modal-yes">${esc(m.okLabel)}</button></div></div></div>`;
+  const m=ui.modal;r.innerHTML=`<div class="modal" role="dialog" aria-modal="true" aria-labelledby="mt"><div class="box"><h2 id="mt" style="font-size:25px">${esc(m.title)}</h2><div>${m.body}</div><div class="row" style="justify-content:flex-end">${m.single?'':'<button class="btn ghost small" data-a="modal-no">취소</button>'}<button class="btn small ${m.danger?'warn':'accent'}" data-a="modal-yes">${esc(m.okLabel)}</button></div></div></div>`;
   r.querySelector('[data-a="modal-yes"]').focus()}
 
 const TEACHER_GUIDE={
@@ -95,15 +95,17 @@ function levelPips(cid,itemId){
   const n=Math.max(1,Math.min(4,Math.round(L.output(cfg,cid,itemId)/base)));
   return `<span class="lvl" role="img" aria-label="4칸 중 ${n}칸">${[1,2,3,4].map(i=>`<i class="${i<=n?'f':''}"></i>`).join('')}</span>`;
 }
+// 생산량이 많거나 적은 까닭 (예전에 만든 방은 기본 문장을 씀)
+function reasonOf(cid,it){const d=L.DEFAULT_CONFIG.items.find(x=>x.id===it.id)||{};const good=L.output(cfg,cid,it.id)>=it.target;return good?(it.good||d.good||''):(it.poor||d.poor||'')}
 function infoPanel(cid,open){
   const t=L.outputTable(cfg);
-  const inner=`<div class="grid2"><div style="min-width:0"><h3>우리나라 생산 수준</h3><div class="tablewrap"><table><thead><tr><th>물품</th><th>생산 수준</th><th>1회 생산량</th><th>필요한 양(목표)</th></tr></thead><tbody>
-    ${cfg.items.map(it=>`<tr><td><span class="itemhead">${itemIcon(it.id,26)}${esc(it.name)}</span></td><td>${levelPips(cid,it.id)}</td><td class="num">${q(t[cid][it.id],it.id)}</td><td class="num">${q(it.target,it.id)}</td></tr>`).join('')}
-    </tbody></table></div></div>
+  const inner=`<div class="grid2"><div style="min-width:0"><h3>우리나라 생산 수준</h3><div class="whylist">
+    ${cfg.items.map(it=>{const good=t[cid][it.id]>=it.target;return `<div class="why${good?' good':''}">${itemIcon(it.id,40)}<div class="why-b"><div class="why-h"><b>${esc(it.name)}</b>${levelPips(cid,it.id)}<span class="num why-q">한 번에 ${q(t[cid][it.id],it.id)}</span></div><p>${esc(reasonOf(cid,it))}</p><span class="muted why-t">국민에게 필요한 양 ${q(it.target,it.id)}</span></div></div>`}).join('')}
+    </div></div>
     <div style="min-width:0"><h3>여러 나라의 1회 생산량 비교</h3><div class="tablewrap"><table><thead><tr><th>나라</th>${cfg.items.map(it=>`<th><span class="itemhead">${itemIcon(it.id,20)}${esc(it.name)}</span></th>`).join('')}</tr></thead><tbody>
     ${cfg.countries.map(o=>`<tr class="${o.id===cid?'me':''}" style="--nc:${esc(o.color)}"><td><span class="itemhead">${flag(o,22)}${esc(o.name)}${o.id===cid?' (우리나라)':''}</span></td>${cfg.items.map(it=>`<td class="num">${q(t[o.id][it.id],it.id)}</td>`).join('')}</tr>`).join('')}
     </tbody></table></div></div></div>`;
-  return open?`<section class="panel"><h2>우리나라 정보</h2>${inner}</section>`:`<section class="panel"><details><summary><h2 style="font-size:19px">생산 수준 · 생산량 비교표</h2></summary><div style="margin-top:12px">${inner}</div></details></section>`;
+  return open?`<section class="panel"><h2>우리나라 정보</h2>${inner}</section>`:`<section class="panel"><details><summary><h2 style="font-size:22px">생산 수준 · 생산량 비교표</h2></summary><div style="margin-top:12px">${inner}</div></details></section>`;
 }
 function productionPanel(cid){
   const st=cst(cid),sec=L.security(cfg,st.inv),t=L.outputTable(cfg);
@@ -252,12 +254,12 @@ function inboxPanel(cid){
     return `<div class="letter incoming" style="--nc:${esc(A.color)}"><div class="row">${flag(A,22)}<b>${esc(A.name)}에서 온 거래 요청</b></div>
       <p>“우리 ${esc(I(t.give.item).name)} <b class="num">${q(t.give.qty,t.give.item)}</b>을(를) 줄 테니, ${esc(C(cid).name)}의 ${esc(I(t.get.item).name)} <b class="num">${q(t.get.qty,t.get.item)}</b>을(를) 주세요.”</p>
       ${dealText(t,cid)}
-      <div class="row"><button class="btn good" data-a="accept" data-c="${cid}" data-t="${t.id}" ${blocked||lack||b?'disabled':''}>수락하기</button>${lack?`<span style="color:var(--warn);font-size:14px;font-weight:600">${esc(I(t.get.item).name)} 부족</span>`:''}</div></div>`}).join(''):'<p class="muted" style="margin:0">도착한 요청이 없어요.</p>';
+      <div class="row"><button class="btn good" data-a="accept" data-c="${cid}" data-t="${t.id}" ${blocked||lack||b?'disabled':''}>수락하기</button>${lack?`<span style="color:var(--warn);font-size:17px;font-weight:600">${esc(I(t.get.item).name)} 부족</span>`:''}</div></div>`}).join(''):'<p class="muted" style="margin:0">도착한 요청이 없어요.</p>';
   const sentList=sent.length?`<h3>보낸 요청</h3>${sent.map(t=>{const B=C(t.to);return `<div class="deal"><div class="row">${flag(B,20)}<b>${esc(B.name)}</b><span class="tag pend">기다리는 중</span><button class="btn ghost small" style="margin-left:auto" data-a="reject" data-c="${cid}" data-t="${t.id}" ${ui.busy['t-'+t.id]?'disabled':''}>요청 취소</button></div>${dealText(t,cid)}</div>`}).join('')}`:'';
   const ts=L.tradeSummary(S,cfg,cid);
   const ledger=done.length?`<div class="tablewrap"><table><thead><tr><th>거래한 나라</th><th>수출(보냄)</th><th>수입(받음)</th></tr></thead><tbody>${done.slice().reverse().map(t=>{const o=C(t.from===cid?t.to:t.from);const g=t.from===cid?t.give:t.get,r=t.from===cid?t.get:t.give;
       return `<tr><td><span class="itemhead">${flag(o,20)}${esc(o.name)}</span></td><td><span class="itemhead">${itemIcon(g.item,18)}${esc(I(g.item).name)} <span class="num">${q(g.qty,g.item)}</span></span></td><td><span class="itemhead">${itemIcon(r.item,18)}${esc(I(r.item).name)} <span class="num">${q(r.qty,r.item)}</span></span></td></tr>`}).join('')}</tbody></table></div>
-    <p class="muted" style="margin:8px 0 0;font-size:14px">수출 합계: ${cfg.items.filter(it=>ts.exports[it.id]).map(it=>`${esc(it.name)} ${q(ts.exports[it.id],it.id)}`).join(', ')||'없음'} · 수입 합계: ${cfg.items.filter(it=>ts.imports[it.id]).map(it=>`${esc(it.name)} ${q(ts.imports[it.id],it.id)}`).join(', ')||'없음'}</p>`:'<p class="muted" style="margin:0">아직 이루어진 거래가 없어요.</p>';
+    <p class="muted" style="margin:8px 0 0;font-size:17px">수출 합계: ${cfg.items.filter(it=>ts.exports[it.id]).map(it=>`${esc(it.name)} ${q(ts.exports[it.id],it.id)}`).join(', ')||'없음'} · 수입 합계: ${cfg.items.filter(it=>ts.imports[it.id]).map(it=>`${esc(it.name)} ${q(ts.imports[it.id],it.id)}`).join(', ')||'없음'}</p>`:'<p class="muted" style="margin:0">아직 이루어진 거래가 없어요.</p>';
   return `<section class="panel"><h2>거래 요청함${inc.length?` <span class="badge num">${inc.length}</span>`:''}</h2><div class="grid2"><div style="display:grid;gap:12px;align-content:start;min-width:0">${incCards}${sentList}</div>
     <div style="min-width:0"><h3>무역 장부</h3>${ledger}</div></div></section>`;
 }
@@ -270,7 +272,7 @@ function notifyIncoming(cid){
 function r1Data(cid){return S.round1&&S.round1[cid]?S.round1[cid]:{inv:cst(cid).inv,log:cst(cid).log.filter(l=>l.round===1)}}
 function resultBlock(cid,data,label){
   const sec=L.security(cfg,data.inv);
-  return `<div style="display:grid;gap:10px"><div class="row" style="justify-content:space-between"><h3 style="margin:0">${esc(label)}</h3><span class="num" style="font-size:22px;font-weight:600">${pct(sec.overall)}</span></div>
+  return `<div style="display:grid;gap:10px"><div class="row" style="justify-content:space-between"><h3 style="margin:0">${esc(label)}</h3><span class="num" style="font-size:25px;font-weight:600">${pct(sec.overall)}</span></div>
    ${cfg.items.map(it=>`<div style="display:grid;grid-template-columns:100px 1fr 120px;gap:8px;align-items:center"><span class="itemhead">${itemIcon(it.id,22)}${esc(it.name)}</span>${bar(cid+label+it.id,sec.per[it.id],itemColor(it.id))}<span class="num" style="text-align:right">${q(data.inv[it.id]||0,it.id)} · ${pct(sec.per[it.id])}</span></div>`).join('')}
    <div class="chips"><span class="label" style="align-self:center">생산한 물품</span>${data.log.length?data.log.map((l,i)=>`<span class="chip"><span class="n">${i+1}</span>${itemIcon(l.item,18)}${esc(I(l.item).name)}</span>`).join(''):'<span class="muted">없음</span>'}</div></div>`;
 }
@@ -330,8 +332,8 @@ function teacherView(){
     const r1=S.round1&&S.round1[c.id]?L.security(cfg,S.round1[c.id].inv).overall:null;
     const seat=extra.seats?extra.seats[c.id]:null;
     return `<div class="ncard" style="--nc:${esc(c.color)}"><div class="hd">${flag(c,30)}<h3>${esc(c.name)}</h3><span class="spec">특화: ${esc(sp)}</span></div>
-     ${seat!==undefined&&seat!==null?`<div class="muted" style="font-size:13px"><span class="dot ${seat.online?'':'off'}"></span> ${seat.online?'접속 중':'연결 끊김'}</div>`:extra.seats?'<div class="muted" style="font-size:13px"><span class="dot idle"></span> 아직 들어오지 않음</div>':''}
-     <div class="row" style="justify-content:space-between"><span><span class="label">종합</span> <b class="num" style="font-size:20px">${pct(sec.overall)}</b></span><span class="muted" style="font-size:13px">기회 <b class="num">${st.chances}</b>/${cfg.chances}${r1!==null?` · 1차 <span class="num">${pct(r1)}</span>`:''}</span></div>
+     ${seat!==undefined&&seat!==null?`<div class="muted" style="font-size:15px"><span class="dot ${seat.online?'':'off'}"></span> ${seat.online?'접속 중':'연결 끊김'}</div>`:extra.seats?'<div class="muted" style="font-size:15px"><span class="dot idle"></span> 아직 들어오지 않음</div>':''}
+     <div class="row" style="justify-content:space-between"><span><span class="label">종합</span> <b class="num" style="font-size:23px">${pct(sec.overall)}</b></span><span class="muted" style="font-size:15px">기회 <b class="num">${st.chances}</b>/${cfg.chances}${r1!==null?` · 1차 <span class="num">${pct(r1)}</span>`:''}</span></div>
      <div class="mini">${cfg.items.map(it=>`${itemIcon(it.id,20)}${bar('t-'+c.id+it.id,sec.per[it.id],itemColor(it.id))}<span class="num">${q(st.inv[it.id]||0,it.id)}</span>`).join('')}</div>
      <div class="chips">${st.log.filter(l=>l.round===round()).map(l=>`<span class="chip" style="padding:2px 6px">${itemIcon(l.item,16)}</span>`).join('')}</div></div>`}).join('');
   const trades=S.trades.slice().reverse();
@@ -342,9 +344,9 @@ function teacherView(){
   return `${opts.teacherExtra?opts.teacherExtra():''}<section class="panel"><h2>수업 단계</h2>${stages}
     <div class="row" style="margin-top:12px;justify-content:space-between"><div class="row"><button class="btn ghost small" data-a="stage" data-n="${L.nextStage(S.stage,-1)}" ${L.nextStage(S.stage,-1)?'':'disabled'}>◀ 이전 단계</button><button class="btn accent small" data-a="stage" data-n="${L.nextStage(S.stage,1)}" ${L.nextStage(S.stage,1)&&!r2wait?'':'disabled'}>다음 단계 ▶</button></div>
     <div class="row"><label class="switch"><input type="checkbox" id="lock-prod" data-a="lock" data-k="production" ${S.locks.production?'checked':''}>생산 잠금</label><label class="switch"><input type="checkbox" id="lock-trade" data-a="lock" data-k="trade" ${S.locks.trade?'checked':''}>무역 잠금</label><label class="switch"><input type="checkbox" id="allow-undo" data-a="undoflag" ${S.allowUndo?'checked':''}>학생 되돌리기 허용</label></div></div>
-    <div class="callout" style="margin-top:12px"><b>${esc(g[0])}</b> · ${esc(g[1])}${r2?`<div class="row" style="margin-top:8px;gap:6px"><span class="label">특화 생산</span>${r2.map(x=>`<span class="tag" style="background:${x.ok?'var(--good-bg)':'var(--warn-bg)'};color:${x.ok?'var(--good)':'var(--warn)'}">${esc(x.name)} <span class="num">${x.done}/${x.need}</span></span>`).join('')}${r2wait?'<span class="muted" style="font-size:13px">네 나라가 모두 끝내야 다음 단계로 넘어갈 수 있어요.</span>':''}</div>`:''}</div></section>
-   <section class="panel"><h2>나라별 현황 <span class="muted" style="font-family:var(--f-body);font-size:13px">특화 물품과 능력치는 교사에게만 보입니다</span></h2><div class="nations">${cards}</div>
-    <p class="muted" style="margin:10px 0 0;font-size:13px">전체 물품 합계 · ${cfg.items.map(it=>`${esc(it.name)} <span class="num">${q(tot[it.id],it.id)}</span>`).join(' · ')} (무역은 이 합계를 바꾸지 않습니다)</p></section>
+    <div class="callout" style="margin-top:12px"><b>${esc(g[0])}</b> · ${esc(g[1])}${r2?`<div class="row" style="margin-top:8px;gap:6px"><span class="label">특화 생산</span>${r2.map(x=>`<span class="tag" style="background:${x.ok?'var(--good-bg)':'var(--warn-bg)'};color:${x.ok?'var(--good)':'var(--warn)'}">${esc(x.name)} <span class="num">${x.done}/${x.need}</span></span>`).join('')}${r2wait?'<span class="muted" style="font-size:15px">네 나라가 모두 끝내야 다음 단계로 넘어갈 수 있어요.</span>':''}</div>`:''}</div></section>
+   <section class="panel"><h2>나라별 현황 <span class="muted" style="font-family:var(--f-body);font-size:15px">특화 물품과 능력치는 교사에게만 보입니다</span></h2><div class="nations">${cards}</div>
+    <p class="muted" style="margin:10px 0 0;font-size:15px">전체 물품 합계 · ${cfg.items.map(it=>`${esc(it.name)} <span class="num">${q(tot[it.id],it.id)}</span>`).join(' · ')} (무역은 이 합계를 바꾸지 않습니다)</p></section>
    <section class="panel"><h2>거래 기록</h2>${tlog}</section>
    ${settingsPanel()}${demoTail}`;
 }
@@ -352,7 +354,7 @@ function settingsPanel(){
   const cond=(sel,id)=>`<select id="${id}" data-cfg>${cfg.conditions.map(k=>`<option value="${k.id}" ${k.id===sel?'selected':''}>${esc(k.name)}</option>`).join('')}</select>`;
   let v1={pass:false,combos:0,perCountry:{}},v2={pass:false};
   if(ui.cfgOpen){v1=L.verifyAutarky(cfg);v2=L.verifyTradePlan(cfg)}
-  return `<section class="panel"><details id="cfg-details" ${ui.cfgOpen?'open':''}><summary><h2 style="font-size:19px">국가·물품 설정과 규칙 검증</h2></summary>
+  return `<section class="panel"><details id="cfg-details" ${ui.cfgOpen?'open':''}><summary><h2 style="font-size:22px">국가·물품 설정과 규칙 검증</h2></summary>
    ${ui.cfgOpen?`<div class="grid2" style="margin-top:12px"><div class="cfg-grid">
     <h3>나라 (능력치 1~5)</h3><div class="tablewrap"><table><thead><tr><th>이름</th><th>색</th>${cfg.conditions.map(k=>`<th>${esc(k.name)}</th>`).join('')}</tr></thead><tbody>
     ${cfg.countries.map((c,ci)=>`<tr><td><input type="text" id="cn-${ci}" data-cfg value="${esc(c.name)}" style="width:96px"></td><td><input type="color" id="cc-${ci}" data-cfg value="${esc(c.color)}" aria-label="${esc(c.name)} 색"></td>${cfg.conditions.map(k=>`<td><input type="number" min="1" max="5" id="cs-${ci}-${k.id}" data-cfg value="${c.stats[k.id]}" aria-label="${esc(c.name)} ${esc(k.name)}"></td>`).join('')}</tr>`).join('')}
@@ -362,7 +364,7 @@ function settingsPanel(){
     </tbody></table></div>
     <div class="row"><span>나라별 생산 기회</span><input type="number" min="1" max="8" id="cfg-ch" data-cfg value="${cfg.chances}"></div>
     <div class="row"><button class="btn accent small" data-a="cfg-apply">설정 적용</button><button class="btn ghost small" data-a="cfg-default">기본값으로</button></div>
-    <p class="muted" style="font-size:13px;margin:0">학생 화면에는 능력치가 보이지 않고, 물품별 생산 수준(4칸)과 생산량만 보입니다. 생산 기회 수는 다음 초기화 또는 2차 시작 때부터 적용됩니다.</p>
+    <p class="muted" style="font-size:15px;margin:0">학생 화면에는 능력치가 보이지 않고, 물품별 생산 수준(4칸)과 생산량만 보입니다. 생산 기회 수는 다음 초기화 또는 2차 시작 때부터 적용됩니다.</p>
    </div>
    <div><h3>현재 설정의 규칙 검증</h3><div class="check">
     <div class="${v1.pass?'ok':'no'}">${v1.pass?'통과':'주의'} · 1차 자급자족에서 100% 달성 ${v1.pass?'불가능':'가능한 나라가 있음'} (나라마다 ${v1.combos}가지 조합 전수 확인)</div>
@@ -370,7 +372,7 @@ function settingsPanel(){
     <div class="${v2.pass?'ok':'no'}" style="margin-top:6px">${v2.pass?'통과':'주의'} · 2차 특화 생산 + 교환으로 모든 나라 100% ${v2.pass?'가능':'불가'}</div>
     ${v2.reason?`<div class="muted">${esc(v2.reason)}</div>`:''}
     ${v2.trades?`<div class="muted">${v2.trades.length}건 교환으로 확인 · 물품 합계 ${v2.conserved?'보존':'불일치'}</div>`:''}
-    <div class="callout" style="margin-top:10px;font-size:14px">생산 규칙: 물품마다 가장 중요한 조건이 하나 있고, 그 조건이 ${cfg.strongLevel}인 나라는 1회에 목표량만큼, 아닌 나라는 목표량의 1/4만큼 생산합니다. 각 나라가 서로 다른 조건 하나만 ${cfg.strongLevel}이어야 수업 설계가 성립합니다.</div>
+    <div class="callout" style="margin-top:10px;font-size:17px">생산 규칙: 물품마다 가장 중요한 조건이 하나 있고, 그 조건이 ${cfg.strongLevel}인 나라는 1회에 목표량만큼, 아닌 나라는 목표량의 1/4만큼 생산합니다. 각 나라가 서로 다른 조건 하나만 ${cfg.strongLevel}이어야 수업 설계가 성립합니다.</div>
    </div></div></div>`:''}</details></section>`;
 }
 
@@ -383,7 +385,7 @@ function projectorView(){
   const avg=Math.round(all.reduce((a,b)=>a+b,0)/all.length*100)/100;
   const avg1=S.round1?Math.round(cfg.countries.map(c=>L.security(cfg,r1Data(c.id).inv).overall).reduce((a,b)=>a+b,0)/cfg.countries.length*100)/100:null;
   const cards=cfg.countries.map(c=>{const d=data(c.id),sec=L.security(cfg,d.inv);const r1=S.round1&&S.stage>=7?L.security(cfg,r1Data(c.id).inv).overall:null;
-    return `<div class="ncard" style="--nc:${esc(c.color)}"><div class="hd">${flag(c,40)}<h3>${esc(c.name)}</h3><b class="num" style="margin-left:auto;font-size:24px">${r1!==null?`<span class="muted" style="font-size:16px">${pct(r1)} →</span> `:''}${pct(sec.overall)}</b></div>
+    return `<div class="ncard" style="--nc:${esc(c.color)}"><div class="hd">${flag(c,40)}<h3>${esc(c.name)}</h3><b class="num" style="margin-left:auto;font-size:27px">${r1!==null?`<span class="muted" style="font-size:19px">${pct(r1)} →</span> `:''}${pct(sec.overall)}</b></div>
      <div class="mini">${cfg.items.map(it=>`${itemIcon(it.id,24)}${bar('p-'+c.id+it.id,sec.per[it.id],itemColor(it.id))}<span class="num">${pct(sec.per[it.id])}</span>`).join('')}</div></div>`}).join('');
   return `<div class="proj"><div class="hero"><div class="row" style="justify-content:space-between"><span style="opacity:.7">${L.stageNo(S.stage)}단계</span>${document.fullscreenEnabled?`<button class="btn ghost small" data-a="fullscreen" style="color:var(--bg);box-shadow:inset 0 0 0 1.5px currentColor">전체 화면</button>`:''}</div><h2>${esc(st.title)}</h2></div>
    <section class="panel"><div class="together"><div><div class="label">${showR1?'1차 실험 · ':''}네 나라가 함께 확보한 국민 생활 물품</div><div class="v num">${pct(avg)}</div></div>

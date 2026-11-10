@@ -61,7 +61,7 @@ async def main():
             await stage(6); await to('gaon'); h = await hint(); print('  6단계:', h)
             check('6단계: 부족한 물품과 배 몰기 안내', '방향키' in h and '석유' in h)
             await pg.click('[data-a=sea-jump][data-v=narae]'); await asyncio.sleep(0.3)
-            h = await hint(); print('  항구 도착:', h); check('항구에 도착하면 거래 요청 방법 안내', '나래국 항구' in h and '거래 요청 보내기' in h)
+            h = await hint(); print('  항구 도착:', h); check('항구에 도착하면 거래 요청 방법 안내', '나온국 항구' in h and '거래 요청 보내기' in h)
             await pg.screenshot(path=f'{SH}/helper-6.png')
             await pg.click('[data-a=sea-propose]'); await asyncio.sleep(0.4)
             h = await hint(); check('요청을 보내면 기다리라는 안내', '기다리' in h)
