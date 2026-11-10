@@ -308,3 +308,10 @@ main{padding-bottom:110px}
 .why-q{margin-left:auto;font-weight:600}
 .why p{margin:4px 0 2px;font-size:18px;line-height:1.5}
 .why-t{font-size:15px}
+
+.ledger>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px}
+.ledger>summary::-webkit-details-marker{display:none}
+.ledger>summary::before{content:'▶';font-size:14px;color:var(--muted);transition:transform .15s}
+.ledger[open]>summary::before{transform:rotate(90deg)}
+.ledger>summary h3{margin:0}
+.ledger[open]>summary{margin-bottom:10px}

@@ -267,7 +267,7 @@ function inboxPanel(cid){
       return `<tr><td><span class="itemhead">${flag(o,20)}${esc(o.name)}</span></td><td><span class="itemhead">${itemIcon(g.item,18)}${esc(I(g.item).name)} <span class="num">${q(g.qty,g.item)}</span></span></td><td><span class="itemhead">${itemIcon(r.item,18)}${esc(I(r.item).name)} <span class="num">${q(r.qty,r.item)}</span></span></td></tr>`}).join('')}</tbody></table></div>
     <p class="muted" style="margin:8px 0 0;font-size:17px">수출 합계: ${cfg.items.filter(it=>ts.exports[it.id]).map(it=>`${esc(it.name)} ${q(ts.exports[it.id],it.id)}`).join(', ')||'없음'} · 수입 합계: ${cfg.items.filter(it=>ts.imports[it.id]).map(it=>`${esc(it.name)} ${q(ts.imports[it.id],it.id)}`).join(', ')||'없음'}</p>`:'<p class="muted" style="margin:0">아직 이루어진 거래가 없어요.</p>';
   return `<section class="panel"><h2>거래 요청함${inc.length?` <span class="badge num">${inc.length}</span>`:''}</h2><div class="grid2"><div style="display:grid;gap:12px;align-content:start;min-width:0">${incCards}${sentList}</div>
-    <div style="min-width:0"><h3>무역 장부</h3>${ledger}</div></div></section>`;
+    <details class="ledger" style="min-width:0"${ui.ledgerOpen?' open':''}><summary data-a="ledger"><h3>무역 장부 <span class="muted num" style="font-weight:500">${done.length}건</span></h3></summary>${ledger}</details></div></section>`;
 }
 function notifyIncoming(cid){
   const ids=S.trades.filter(t=>t.status==='pending'&&t.to===cid).map(t=>t.id);
@@ -508,6 +508,7 @@ function readCfg(){
 /* ---------- 이벤트 ---------- */
 function onClick(e){
   const b=e.target.closest('[data-a]');if(!b||b.disabled)return;const a=b.dataset.a,cid=b.dataset.c;const B=opts.backend;
+  if(a==='ledger'){ui.ledgerOpen=!b.parentElement.open;return}
   if(a==='modal-no'){ui.modal=null;return renderModal()}
   if(a==='modal-yes'){const m=ui.modal;ui.modal=null;renderModal();return m.onOk()}
   if(a==='helper'){ui.helperOpen=!ui.helperOpen;ui.helperNew=false;return renderHelper()}
