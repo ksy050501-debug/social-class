@@ -24,13 +24,16 @@ const ICON_ITEM={
  phone:(s)=>`<svg width="${s}" height="${s}" viewBox="0 0 48 48" aria-hidden="true"><rect x="13" y="4" width="22" height="40" rx="5" fill="var(--ink)"/><rect x="15.5" y="9" width="17" height="28" rx="2" fill="var(--phone)"/><rect x="18" y="13" width="5" height="5" rx="1.4" fill="var(--surface)" opacity=".8"/><rect x="25" y="13" width="5" height="5" rx="1.4" fill="var(--surface)" opacity=".6"/><rect x="18" y="20" width="5" height="5" rx="1.4" fill="var(--surface)" opacity=".6"/><rect x="21" y="40" width="6" height="1.6" rx=".8" fill="var(--surface)"/></svg>`
 };
 const itemIcon=(id,s)=>(ICON_ITEM[id]||((z)=>`<svg width="${z}" height="${z}" viewBox="0 0 48 48" aria-hidden="true"><rect x="8" y="8" width="32" height="32" rx="8" fill="var(--accent)"/></svg>`))(s||40);
+// 나라 색: 가온국부터 빨강·주황·노랑·초록 단색 깃발
+const NEW_COL={gaon:'#d93a3a',narae:'#ee8a1c',daon:'#f2c12e',raon:'#2f9e4f'};
+const OLD_COL=['#2f6fdb','#d9622b','#13917f','#8e44b8'];
+// 예전 기본 색으로 만든 방도 새 색으로 보이게 함 (교사가 직접 바꾼 색은 그대로)
+function migrateCfg(c){if(!c||!c.countries)return c;c=JSON.parse(JSON.stringify(c));c.countries.forEach(x=>{if(OLD_COL.includes(String(x.color).toLowerCase())&&NEW_COL[x.id])x.color=NEW_COL[x.id];x.flag='solid'});return c}
+// 나라 색 위에 쓰는 글자색 (노랑처럼 밝은 색이면 어두운 글자)
+function ink(col){const m=/^#?([0-9a-f]{6})$/i.exec(String(col||''));if(!m)return '#fff';const n=parseInt(m[1],16),r=n>>16&255,g=n>>8&255,b=n&255;return (0.299*r+0.587*g+0.114*b)>165?'#14202c':'#fff'}
 function flag(c,w){
-  w=w||54;const h=Math.round(w*2/3);const col=esc(c.color);let body='';
-  if(c.flag==='circle')body=`<rect width="30" height="20" fill="#fff"/><circle cx="15" cy="10" r="5.5" fill="${col}"/>`;
-  else if(c.flag==='cross')body=`<rect width="30" height="20" fill="${col}"/><rect x="9" width="4" height="20" fill="#fff"/><rect y="8" width="30" height="4" fill="#fff"/>`;
-  else if(c.flag==='diagonal')body=`<rect width="30" height="20" fill="#fff"/><path d="M0 20L30 0V20z" fill="${col}"/><circle cx="8" cy="6" r="2.4" fill="${col}"/>`;
-  else body=`<rect width="30" height="20" fill="${col}"/><rect y="6.7" width="30" height="6.6" fill="#fff"/><rect x="2" y="2" width="4" height="3" fill="#fff" opacity=".8"/>`;
-  return `<svg class="flag" width="${w}" height="${h}" viewBox="0 0 30 20" role="img" aria-label="${esc(c.name)} 국기">${body}</svg>`;
+  w=w||54;const h=Math.round(w*2/3);
+  return `<svg class="flag" width="${w}" height="${h}" viewBox="0 0 30 20" role="img" aria-label="${esc(c.name)} 국기"><rect x=".5" y=".5" width="29" height="19" rx="1.5" fill="${esc(c.color)}" stroke="rgba(0,0,0,.18)"/></svg>`;
 }
 
 /* ---------- 도우미 ---------- */
@@ -207,10 +210,10 @@ function seaSVG(cid){
 function seaPanel(cid){
   const s=shipOf(cid);const blocked=L.canTrade(S);
   const cards=cfg.countries.map((c,i)=>{const [x,y]=SEA.isl[i];const st=cst(c.id);const me=c.id===cid;
-    return `<div class="isle${me?' me':''}" style="left:${x/SEA.W*100}%;top:${y/SEA.H*100}%;--nc:${esc(c.color)}"><div class="isle-hd">${flag(c,20)}<b>${esc(c.name)}</b>${me?'<span class="me-tag">우리</span>':''}</div>
+    return `<div class="isle${me?' me':''}" style="left:${x/SEA.W*100}%;top:${y/SEA.H*100}%;--nc:${esc(c.color)};--nci:${ink(c.color)}"><div class="isle-hd">${flag(c,20)}<b>${esc(c.name)}</b>${me?'<span class="me-tag">우리</span>':''}</div>
       <div class="isle-inv">${cfg.items.map(it=>`<span>${itemIcon(it.id,15)}<span class="num">${fmtN(st.inv[it.id])}</span><small>${esc(it.unit)}</small></span>`).join('')}</div></div>`}).join('');
   const at=s.dock?C(s.dock):null;
-  const banner=at?(s.dock===cid?`<div class="sea-banner">다른 나라 항구로 가 보세요.</div>`:`<div class="sea-banner arrive" style="--nc:${esc(at.color)}">${flag(at,20)} <b>${esc(at.name)} 항구</b> 도착!</div>`):'';
+  const banner=at?(s.dock===cid?`<div class="sea-banner">다른 나라 항구로 가 보세요.</div>`:`<div class="sea-banner arrive" style="--nc:${esc(at.color)};--nci:${ink(at.color)}">${flag(at,20)} <b>${esc(at.name)} 항구</b> 도착!</div>`):'';
   const jump=opts.mode!=='student'?`<div class="row" style="gap:6px"><span class="label">교사용 바로 이동</span>${cfg.countries.map(c=>`<button class="btn ghost small" data-a="sea-jump" data-c="${cid}" data-v="${c.id}">${flag(c,18)}${esc(c.name)}</button>`).join('')}</div>`:'';
   return `<section class="panel"><h2>무역의 바다</h2>
    ${blocked?`<p class="callout" style="margin:0 0 12px">${esc(blocked)}</p>`:''}
@@ -289,7 +292,7 @@ function flowSVG(me){
     const tw=(r)=>[...r].reduce((s,ch)=>s+(ch.charCodeAt(0)>255?12.5:7),0);
     const w=Math.max(...rows.map(tw))+18,h=rows.length*17+8;
     labels+=`<g opacity="${hl?1:.45}"><rect x="${mx-w/2}" y="${my-h/2}" width="${w}" height="${h}" rx="6" fill="var(--surface)" stroke="var(--line)"/>${rows.map((r,i)=>`<text x="${mx}" y="${my-h/2+17+i*17}" text-anchor="middle" font-size="12" fill="var(--ink)" font-family="IBM Plex Sans KR,sans-serif">${esc(r)}</text>`).join('')}</g>`});
-  const nodes=ids.map(id=>{const c=C(id),[x,y]=pos[id];return `<g><circle cx="${x}" cy="${y}" r="${id===me?40:34}" fill="${esc(c.color)}"/><text x="${x}" y="${y+6}" text-anchor="middle" font-size="17" fill="#fff" font-family="Do Hyeon,sans-serif">${esc(c.name)}</text></g>`}).join('');
+  const nodes=ids.map(id=>{const c=C(id),[x,y]=pos[id];return `<g><circle cx="${x}" cy="${y}" r="${id===me?40:34}" fill="${esc(c.color)}"/><text x="${x}" y="${y+6}" text-anchor="middle" font-size="17" fill="${ink(c.color)}" font-family="Do Hyeon,sans-serif">${esc(c.name)}</text></g>`}).join('');
   return `<div class="flow"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="나라 사이 무역 흐름">${lines}${nodes}${labels}${Object.keys(pairs).length?'':`<text x="${cx}" y="${cy}" text-anchor="middle" font-size="15" fill="var(--muted)" font-family="IBM Plex Sans KR,sans-serif">아직 성립한 거래가 없어요</text>`}</svg></div>`;
 }
 function comparePanel(cid){
@@ -544,7 +547,7 @@ const TradeUI={
     else{const h=location.hash.slice(1);const sv=store.get('tradeGame.view.'+o.mode);view=ok(h)?h:ok(sv)?sv:(o.tabs||['teacher'])[0]}
     ui.draft={};ui.busy={};
   },
-  update(state,config,ex){S=state;cfg=config;extra=ex||{};render()},
+  update(state,config,ex){config=migrateCfg(config);S=state;cfg=config;extra=ex||{};render()},
   render(){render(true)},
   toast, ask, esc, flag, itemIcon,
   sailTo(cid,to){const s=shipOf(cid),p=SEA.port[seaIdx(to)];s.x=p[0];s.y=p[1];s.dock=to;render(true)},

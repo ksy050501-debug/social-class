@@ -28,10 +28,10 @@
       { id: 'phone', name: '스마트폰', unit: '만 대', target: 1600, key: 'tech'     }
     ],
     countries: [
-      { id: 'gaon', name: '가온국', color: '#2f6fdb', flag: 'stripes',  stats: { capital: 2, resource: 3, labor: 5, tech: 1 } },
-      { id: 'narae', name: '나래국', color: '#d9622b', flag: 'circle',   stats: { capital: 3, resource: 5, labor: 1, tech: 2 } },
-      { id: 'daon', name: '다온국', color: '#13917f', flag: 'cross',    stats: { capital: 5, resource: 1, labor: 4, tech: 3 } },
-      { id: 'raon', name: '라온국', color: '#8e44b8', flag: 'diagonal', stats: { capital: 4, resource: 1, labor: 2, tech: 5 } }
+      { id: 'gaon', name: '가온국', color: '#d93a3a', flag: 'solid',  stats: { capital: 2, resource: 3, labor: 5, tech: 1 } },
+      { id: 'narae', name: '나래국', color: '#ee8a1c', flag: 'solid',   stats: { capital: 3, resource: 5, labor: 1, tech: 2 } },
+      { id: 'daon', name: '다온국', color: '#f2c12e', flag: 'solid',    stats: { capital: 5, resource: 1, labor: 4, tech: 3 } },
+      { id: 'raon', name: '라온국', color: '#2f9e4f', flag: 'solid', stats: { capital: 4, resource: 1, labor: 2, tech: 5 } }
     ]
   };
 

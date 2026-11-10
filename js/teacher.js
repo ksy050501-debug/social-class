@@ -47,7 +47,7 @@ function roomPanel() {
   return `<section class="panel"><h2>수업 방 · 접속 현황</h2><div class="grid2">
     <div style="display:grid;gap:10px;align-content:start;min-width:0"><div class="label">입장 코드</div><div class="bigcode">${code}</div>
       <div class="copyline"><code id="student-url">${esc(url)}</code><button class="btn ghost small" data-a="copy-url">주소 복사</button></div>
-      <p class="muted" style="margin:0;font-size:14px">학생 태블릿에서 이 주소를 열거나, 학생 첫 화면에 입장 코드를 입력합니다. 모둠마다 나라를 하나씩 고르면 그 기기는 그 나라로 고정됩니다.</p></div>
+      <p class="muted" style="margin:0;font-size:14px">학생 컴퓨터에서 이 주소를 열거나, 학생 첫 화면에 입장 코드를 입력합니다. 모둠마다 나라를 하나씩 고르면 그 기기는 그 나라로 고정됩니다.</p></div>
     <div style="display:grid;gap:8px;align-content:start;min-width:0"><div class="label">나라별 기기</div><div class="seats">${seats}</div>
       <p class="muted" style="margin:0;font-size:14px">기기를 바꿔야 할 때는 [자리 비우기]를 누르면 새 기기에서 그 나라를 다시 고를 수 있어요. 기기가 고장 나면 위쪽 나라 탭에서 교사가 대신 조작할 수도 있습니다.</p></div></div>
     <div class="row" style="margin-top:12px"><button class="btn ghost small" data-a="rooms">다른 방 열기</button><button class="btn warn small" data-a="reset">게임 전체 초기화</button><button class="btn ghost small" data-a="logout">로그아웃</button></div></section>`;
