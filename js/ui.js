@@ -225,6 +225,12 @@ function seaPanel(cid){
      <p class="muted" style="margin:0">방향키를 누르고 있으면 배가 움직여요.</p></div>
    ${jump}</section>`;
 }
+// 필요한 양 대비 창고 양: 4칸 막대 (없음 빨강 · 부족 주황 · 꽉 참 초록 · 넘침 파랑)
+function gauge(have,target){
+  const p=target>0?have/target:0,pct=Math.round(p*100);
+  const cls=have<=0?'none':have<target?'low':have===target?'full':'over';
+  return `<span class="gauge g-${cls}" role="img" aria-label="국민에게 필요한 양의 ${pct}%"><span class="gbar"><i style="width:${Math.min(100,p*100)}%"></i></span><span class="gpct num">${pct}%</span></span>`;
+}
 function portPanel(cid,to){
   const T=C(to),my=cst(cid).inv,th=cst(to).inv,U=L.tradeUnits(cfg);const blocked=L.canTrade(S);
   const key=cid+'>'+to;ui.port=ui.port||{};
@@ -233,7 +239,7 @@ function portPanel(cid,to){
     const t=cfg.items.filter(it=>it.id!==g).sort((a,b)=>(th[b.id]-b.target)/b.target-(th[a.id]-a.target)/a.target)[0].id;d=ui.port[key]={give:g,get:t}}
   const pend=S.trades.find(t=>t.status==='pending'&&t.from===cid&&t.to===to);
   const opt=(k,it)=>{const mine=k==='give';const have=(mine?my:th)[it.id]||0;const low=have<U[it.id];const same=!mine&&it.id===d.give;
-    return `<button class="opt${d[k]===it.id?' on':''}" data-a="pg" data-c="${cid}" data-v="${to}" data-k="${k}" data-i="${it.id}" ${(mine&&low)||same?'disabled':''} aria-pressed="${d[k]===it.id}">${itemIcon(it.id,30)}<span><b>${esc(it.name)} <span class="num">${q(U[it.id],it.id)}</span></b><small>${mine?'우리':esc(T.name)} 창고 <span class="num">${q(have,it.id)}</span>${low?(mine?' · 부족':' · 지금은 부족'):''}</small></span></button>`};
+    return `<button class="opt${d[k]===it.id?' on':''}" data-a="pg" data-c="${cid}" data-v="${to}" data-k="${k}" data-i="${it.id}" ${(mine&&low)||same?'disabled':''} aria-pressed="${d[k]===it.id}">${itemIcon(it.id,30)}<span><b>${esc(it.name)} <span class="num">${q(U[it.id],it.id)}</span></b><small>${mine?'우리':esc(T.name)} 창고 <span class="num">${q(have,it.id)}</span>${low?(mine?' · 부족':' · 지금은 부족'):''}</small>${gauge(have,it.target)}</span></button>`};
   const gi=I(d.give),ti=I(d.get);const short=(my[d.give]||0)<U[d.give];const busy=!!ui.busy['tp-'+cid];
   return `<section class="panel port" style="--nc:${esc(T.color)}"><h2>${flag(T,28)} ${esc(T.name)}에 거래 요청</h2>
    ${pend?`<div class="letter"><div class="label">보낸 요청 · ${esc(T.name)}의 거래 요청함에서 기다리는 중</div><p>“우리 ${esc(I(pend.give.item).name)} <b class="num">${q(pend.give.qty,pend.give.item)}</b>을(를) 줄 테니, ${esc(T.name)}의 ${esc(I(pend.get.item).name)} <b class="num">${q(pend.get.qty,pend.get.item)}</b>을(를) 주세요.”</p>
